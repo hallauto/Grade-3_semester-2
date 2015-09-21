@@ -35,19 +35,19 @@ int main (int    argc, char **argv)
 	switch (opt)
 	  {
 	  case 'n':
-	    name = optarg;
+	    name = optarg; //옵션에 n이 있으면 optarg에서 주어진 이름이 이 프로그램의 새로운 이름입니다. 이를 저장합니다.
 	    break;
 	  case 't':
-	    timeout = atoi (optarg); //타임아웃 값을 지정합니다.
+	    timeout = atoi (optarg); //옵션에 t가 있으면 타임아웃 값을 지정합니다.
 	    break;
 	  case 'r':
-	    read_stdin = 1;
+	    read_stdin = 1; //옵션에 r이 있으면 표준 입력장치를 그대로 1로 둡니다.
 	    break;
 	  case 'w':
-	    msg_stdout = optarg;
+	    msg_stdout = optarg; //stdout에 출력할 문자열은 optarg에 있습니다.
 	    break;
 	  default:
-	    fprintf (stderr, "usage: %s [-n name] [-t timeout] [-r] [-w msg]\n", argv[0]);
+	    fprintf (stderr, "usage: %s [-n name] [-t timeout] [-r] [-w msg]\n", argv[0]); //opt에 잘못된 값이 들어왔으면 stderr에 다음과 같이 출력합니다.
 	    return -1;
 	  }
       }
@@ -81,7 +81,7 @@ int main (int    argc, char **argv)
   looping = 1;
 
   /* Write the message to standard outout. */
-  if (msg_stdout)
+  if (msg_stdout) //출력할 메시지가 있으면 이를 출력합니다.
     {
       char msg[256];
 
@@ -90,7 +90,7 @@ int main (int    argc, char **argv)
     }
   
   /* Read the message from standard input. */
-  if (read_stdin)
+  if (read_stdin) //입력장치가 존재하면 메시지를 입력받습니다.
     {
       char    msg[256];
       ssize_t len;
@@ -104,15 +104,16 @@ int main (int    argc, char **argv)
     }
 
   /* Loop */
-  while (looping && timeout != 0)
+  while (looping && timeout != 0) //타임아웃이 넘어갈 때까지 이 루프를 돕니다.
     {
-      if (0) fprintf (stderr, "'%s' timeout %d\n", name, timeout);
+      if (0) 
+       fprintf (stderr, "'%s' timeout %d\n", name, timeout);
       usleep (1000000);
       if (timeout > 0)
-	timeout--;
+	     timeout--;
     }
 
-  fprintf (stderr, "'%s' end\n", name);
+  fprintf (stderr, "'%s' end\n", name); //이제 Task가 끝났습니다. stderr에 이 사실을 출력합니다.
 
   return 0;
 }
