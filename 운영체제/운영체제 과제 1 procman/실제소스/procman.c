@@ -16,15 +16,16 @@
 void file_open(char **argv)
 {
 	char* file_name;
-	char message[100];
+	char* message = NULL;
+	size_t size = 0;
 	file_name = strdup(argv[1]);
 	
 	argv_file = fopen(file_name,"r");
 
 	while(!feof(argv_file))
 	{
-		fscanf(argv_file,"%s",message);
-		printf("%s\n",message);
+		getline(&message,&size,argv_file);
+		printf("%s",message);
 	}
 	fclose(argv_file);
 }
