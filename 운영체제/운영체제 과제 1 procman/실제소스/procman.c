@@ -15,6 +15,8 @@ void file_open(char **argv)
 {
 	char* file_name;
 	file_name = strdup(argv[1]);
+	
+	argv_file = fopen(file_name);
 }
 
 

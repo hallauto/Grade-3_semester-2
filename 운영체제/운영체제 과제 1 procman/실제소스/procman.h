@@ -1,5 +1,5 @@
-#include "stdio.h"
-#include "string.h"
+#include <stdio.h>
+#include <string.h>
 
 //한 줄의 길이는 최대 1000바이트입니다.
 #define MAX_LENGTH 1000
@@ -22,6 +22,9 @@ const int ERROR_FAIL_EXECUTE = 11;
 const char ACTION_ONCE[10] = "once";
 const char ACTION_WAIT[10] = "wait";
 const char ACTION_RESPAWN[10] = "respawn" 
+
+//config 파일을 가리키는 FILE 포인터입니다. 
+FILE* argv_file;		
 
 /*
 설정파일의 각 라인과, 라인의 내용들을 전부 구조체 배열로 만들어서 저장한 구조체입니다.
