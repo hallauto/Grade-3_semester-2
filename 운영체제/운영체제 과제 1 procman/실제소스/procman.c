@@ -21,8 +21,11 @@ void file_open(char **argv)
 	
 	argv_file = fopen(file_name,"r");
 
-	fscanf(argv_file,"%s",message);
-	printf("%s\n",message);
+	while(!feof(argv_file))
+	{
+		fscanf(argv_file,"%s",message);
+		printf("%s\n",message);
+	}
 	fclose(argv_file);
 }
 
