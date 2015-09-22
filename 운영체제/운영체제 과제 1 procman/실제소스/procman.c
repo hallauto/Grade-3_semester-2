@@ -11,12 +11,19 @@
 #include <errno.h>
 #include <sys/wait.h>
 
+#include "procman.h"
+
 void file_open(char **argv)
 {
 	char* file_name;
+	char message[100];
 	file_name = strdup(argv[1]);
 	
-	argv_file = fopen(file_name);
+	argv_file = fopen(file_name,"r");
+
+	fscanf(argv_file,"%s",message);
+	printf("%s\n",message);
+	fclose(argv_file);
 }
 
 
