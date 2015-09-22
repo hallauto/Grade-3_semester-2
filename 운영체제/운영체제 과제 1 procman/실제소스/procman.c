@@ -11,6 +11,13 @@
 #include <errno.h>
 #include <sys/wait.h>
 
+void file_open(char **argv)
+{
+	char* file_name;
+	file_name = strdup(argv[1]);
+}
+
+
 int main (int argc, char **argv)
 {
 	if (argc <= 1)
@@ -18,6 +25,9 @@ int main (int argc, char **argv)
 		fprintf (stderr, "usage: %s config-file\n", argv[0]);
 		return -1;
 	}
-
+	else
+	{
+		file_open(argv);
+	}
 	return 0;
 }
