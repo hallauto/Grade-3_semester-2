@@ -31,12 +31,14 @@ FILE* argv_file;
 int line_many 실행해야할 행들의 수입니다. 이 값이 0이하면 프로세스 실행없이 바로 종료합니다.
 char** input_string 각각의 행 문자열들을 저장한 변수입니다. malloc과 strdup를 활용해서 2차원 문자열 배열을 만듭니다.
 */
-typedef struct  input_setting
+typedef struct  input_config
 {
 	int line_many;
 	char** input_string;
 
-} input_setting;
+} input_config;
+
+input_config * struct_config;
 
 /*
 설정파일들의 각 라인을 파싱하고 그 내용을 이 구조체에 저장합니다. 각각의 구조체들은 배열로 보관됩니다.
@@ -58,3 +60,11 @@ typedef struct passed_string
 passed_string * pass_str_array; //파싱된 후, 내용이 저장된 구조체를 여기에 저장합니다. 접근은 줄번호로 접근합니다.
 
 int current_line; //현재 실행중인 행입니다. 이 값이 위의 input_setting구조체 변수의 배열의 인덱스로 쓰입니다.
+
+
+/*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
+
+void read_config_file();
+void read_new_line_letter();
+void file_open(char **argv);
