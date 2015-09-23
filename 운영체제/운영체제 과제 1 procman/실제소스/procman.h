@@ -26,19 +26,10 @@ const char ACTION_RESPAWN[10] = "respawn";
 //config 파일을 가리키는 FILE 포인터입니다. 
 FILE* argv_file;		
 
-/*
-설정파일의 각 라인과, 라인의 내용들을 전부 구조체 배열로 만들어서 저장한 구조체입니다.
-int line_many 실행해야할 행들의 수입니다. 이 값이 0이하면 프로세스 실행없이 바로 종료합니다.
-char** input_string 각각의 행 문자열들을 저장한 변수입니다. malloc과 strdup를 활용해서 2차원 문자열 배열을 만듭니다.
-*/
-typedef struct  input_config
-{
-	int line_many;
-	char** input_string;
-
-} input_config;
-
-input_config * struct_config;
+//int line_many 실행해야할 행들의 수입니다. 이 값이 0이하면 프로세스 실행없이 바로 종료합니다.
+int line_many;
+//char** input_string 각각의 행 문자열들을 저장한 변수입니다. malloc과 strdup를 활용해서 2차원 문자열 배열을 만듭니다.
+char** input_string_array;
 
 /*
 설정파일들의 각 라인을 파싱하고 그 내용을 이 구조체에 저장합니다. 각각의 구조체들은 배열로 보관됩니다.
