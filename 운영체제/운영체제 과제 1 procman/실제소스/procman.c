@@ -13,9 +13,6 @@
 
 #include "procman.h"
 
-
-char** str_split(char* a_str, const char a_delim);
-
 void file_open(char **argv)
 {
 	char* file_name;
@@ -31,6 +28,18 @@ void file_open(char **argv)
 	
 	read_config_file();
 }
+/**
+ * 실제로 파싱을 하는 함수입니다. 한 줄을 읽으면 한번 호출 됩니다. 파싱은 다음 순서대로 이루어집니다.
+ * 1.구분자 갯수 확인(strcnt함수 이용)
+ * 2.각각의 부분을 파싱(strsep이용), 임시 변수에 저장
+ * 3.이 내용을 parse_str_array에 저장
+ * 4.마지막으로 오류 검사
+ */
+int parse_command()
+{
+	
+}
+
 /**
  * config파일을 읽고 파싱과 적절한 구조체 생성을 지시하는 함수입니다.
  */
