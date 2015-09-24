@@ -55,7 +55,7 @@ void file_open(char **argv)
   * 어디까지나 앞과 뒤만 제거하므로, 사이에 있는 공백은 제거하지 않습니다.
   * char* string: 공백을 제거할 문자열입니다.
   */
- int remove_string_space(char* string)
+ void remove_string_space(char* string)
  {
 	 int string_length = strlen(string);
 	 int string_index = 0;
@@ -155,6 +155,37 @@ void file_open(char **argv)
 	return 0;
  }
  
+ /**
+  * action을 검사하는 함수입니다.
+  * char * string: 검사할 문자열입니다.
+  * return: int 오류 코드
+  * 0: 오류 없음
+  * 1: 존재하지않는 액션
+  */
+ int check_action(char* string)
+ {
+	 remove_string_space(string);
+	 
+	 if (strlen(string) < 1)
+	 {
+		 return 1;
+	 }
+	 
+	 if (strcmp(string,ACTION_ONCE)==0)
+	 {
+		 return 0;
+	 }
+	 else if (strcmp(string,ACTION_RESPAWN)==0)
+	 {
+		 return 0;
+	 }
+	 else if (strcmp(string,ACTION_WAIT)==0)
+	 {
+		 return 0;
+	 }
+	 return 1;
+ }
+ 
 /**
  * 실제로 파싱을 하는 함수입니다. 한 줄을 읽으면 한번 호출 됩니다. 
  * 
@@ -183,7 +214,7 @@ int parse_command(int line_index)
 	if (letter_cnt(input_string_array[line_index],*delimiter) != 3)
 	{
 		free(parsed_struct);
-		return 0; //오류가 있습니다. 다른 문제가 있는지 검사해야합니다.
+		return 1; //오류가 있습니다. 다른 문제가 있는지 검사해야합니다.
 	}
 	
 	copied_string = strdup(input_string_array[line_index]);
@@ -201,7 +232,7 @@ int parse_command(int line_index)
 		{
 			printf("duplicate id ‘%s’ in line %d, ignored\n", seperated_string, line_index);
 		}
-		return 0;
+		return 1;
 	}
 	else
 	{
@@ -210,18 +241,20 @@ int parse_command(int line_index)
 
 	//이번에는 action 값을 파싱으로 가져옵니다.
 	seperated_string = strsep(&copied_string, delimiter);
-	/*
-	if (!check_action(line_index))
+	if ((check_result = check_action(seperated_string))) //action에 오류가 있는지 검사합니다.
 	{
 		free(parsed_struct->id);
 		free(parsed_struct);
-		printf("이거 오류가 있는 커맨드입니다. 작동하면 안되요 안되\n");
+		if (check_result == 1)
+		{
+			printf("invalid action ‘%s’ in line %d, ignored\n",seperated_string,line_index);
+		}
+		return 1;
 	}
 	else
 	{
-		parsed_struct->action = strdup(seperated_string);
+		strcpy(parsed_struct->action,seperated_string);
 	}
-	*/
 	
 	seperated_string = strsep(&copied_string, delimiter);
 	//printf("pipe-id:%s	길이=%d",seperated_string,strlen(seperated_string));
@@ -230,7 +263,7 @@ int parse_command(int line_index)
 	//printf("command:%s",seperated_string);
 	
 	parse_str_array[line_index] = parsed_struct;
-	return 1;
+	return 0;
 }
 
 
@@ -284,6 +317,7 @@ int main (int argc, char **argv)
 	if (argc <= 1)
 	{
 		fprintf (stderr, "usage: %s config-file\n", argv[0]);
+		fprintf (stderr, "configuration file must specified\n");
 		return -1;
 	}
 	else
