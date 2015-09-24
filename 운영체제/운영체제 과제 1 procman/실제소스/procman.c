@@ -107,8 +107,9 @@ void file_open(char **argv)
   * char* string 검사할 아이디 문자열입니다.
   * 
   * return result 코드별로 뜻이 존재합니다.
-  * 0 = 아이디의 형식이 잘못되었습니다.
-  * 1 = 문제없습니다. 정상적으로 다음 단계로 넘어갑니다.
+  * 0 = 문제없습니다. 정상적으로 다음 단계로 넘어갑니다.
+  * 1 = 아이디의 형식이 잘못되었습니다.
+  * 2 = 중복되는 아이디가 존재합니다.
   */
  int check_id(char * string)
  {
@@ -118,10 +119,16 @@ void file_open(char **argv)
 	 int arscii_9 = 57;
 	 
 	 int string_index = 0; //문자열을 탐색할 인덱스입니다.
-	 int string_length = strlen(string);
+	 int string_length = 0; //문자열의 길이입니다.
 	 
 	 //먼저 문자열의 앞뒤에서 공백을 제거합니다.
 	 remove_string_space(string);
+	 
+	 string_length = strlen(string);
+	 if (string_length < 2 || string_length > 8)
+	 {
+		 return 1;
+	 }
 	
 	//이제 문자열이 형식에 맞는지 검사합니다.
 	for (string_index = 0; string_index < string_length; string_index++)
@@ -129,7 +136,7 @@ void file_open(char **argv)
 		if (string[string_index]< arscii_a || string[string_index] > arscii_z)
 		{
 			if (string[string_index] < arscii_0 || string[string_index] > arscii_9)
-				return 0;
+				return 1;
 		}
 	}
 	
@@ -141,12 +148,11 @@ void file_open(char **argv)
 			continue;
 		else if(strcmp(parse_str_array[array_index]->id,string)==0) //이제 id값이 같은 구조체가 존재하는지 검사합니다. 존재한다면 0(오류)을 반환합니다.
 		{
-			printf("\n\n아이디에 중복이라니!!\n\n");
-			return 0;
+			return 2;
 		}
 	}
 	
-	return 2;
+	return 0;
  }
  
 /**
@@ -171,6 +177,8 @@ int parse_command(int line_index)
 	
 	parsed_string* parsed_struct = calloc(1,sizeof(parsed_string)); //parsed_string에 저장될 원소입니다. 만약 커맨드에 오류가 있다면 free로 메모리를 없애고 parsed_array에는 아무 값도 저장되지 않습니다.
 	
+	int check_result = 0; //입력된 값들이 조건을 만족하는지 검사한 후의 결과 값을 저장할 변수입니다.
+	
 	//먼저 형식에 맞는지 확인합니다. 기본적으로 커맨드는 ':' 문자가 3개 존재해야합니다.
 	if (letter_cnt(input_string_array[line_index],*delimiter) != 3)
 	{
@@ -182,10 +190,17 @@ int parse_command(int line_index)
 	
 	seperated_string = strsep(&copied_string, delimiter);
 	printf("id:%s	\n",seperated_string);
-	if (!check_id(seperated_string)) //먼저 아이디부분을 확인합니다. 아이디는 2~6자의 영어,숫자로만 이루어져야합니다.
+	if ((check_result = check_id(seperated_string))) //먼저 아이디부분을 확인합니다. 아이디는 2~6자의 영어,숫자로만 이루어져야합니다. 또한 중복이 없어야합니다.
 	{
 		free(parsed_struct);
-		printf("이거 오류가 있는 커맨드입니다. 작동하면 안되요 안되\n");
+		if (check_result == 1)
+		{
+			printf("아이디가 형식에 맞지않습니다.\n");
+		}
+		else if (check_result == 2)
+		{
+			printf("중복인 아이디입니다.\n");
+		}
 		return 0;
 	}
 	else
@@ -236,10 +251,6 @@ void read_config_file()
 		{
 			parse_command(line_index);
 			
-		}
-		else
-		{
-			printf("필요가 없는 줄입니다. --------- %s",input_string_array[line_index]);
 		}
 	}
 	
