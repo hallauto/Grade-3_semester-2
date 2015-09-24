@@ -120,11 +120,6 @@ void file_open(char **argv)
 	 int string_index = 0; //문자열을 탐색할 인덱스입니다.
 	 int string_length = strlen(string);
 	 
-	 if (string_length < 1) //문자열이 없습니다. 즉, 공백문자열과 같다고 할 수 있습니다.
-	 {
-		 return 1;
-	 }
-	 
 	 //먼저 문자열의 앞뒤에서 공백을 제거합니다.
 	 remove_string_space(string);
 	
@@ -138,6 +133,19 @@ void file_open(char **argv)
 		}
 	}
 	
+	//마지막으로 중복이 없는지 검사합니다.
+	int array_index; //parsed_array를 탐색하는데에 쓰일 배열입니다.
+	for (array_index = 0; array_index < line_many; array_index++)
+	{
+		if (parse_str_array[array_index] == NULL) //parse_str_array에서 정상적인 커맨드가 파싱되어 저장되지 않은 곳은 전부 NULL값입니다. 당연히 탐색할 필요가 없습니다.
+			continue;
+		else if(strcmp(parse_str_array[array_index]->id,string)==0) //이제 id값이 같은 구조체가 존재하는지 검사합니다. 존재한다면 0(오류)을 반환합니다.
+		{
+			printf("\n\n아이디에 중복이라니!!\n\n");
+			return 0;
+		}
+	}
+	
 	return 2;
  }
  
@@ -145,6 +153,8 @@ void file_open(char **argv)
  * 실제로 파싱을 하는 함수입니다. 한 줄을 읽으면 한번 호출 됩니다. 
  * 
  * int line_index: 파싱할 줄의 번호가 곧 input_string_array와 parse_str_array의 인덱스가 됩니다.
+ * 
+ * return int 오류 번호: 파싱중에 생긴 오류에 따라 번호가 반환됩니다. 이 오류를 구분해서 stderr에 출력합니다.
  * 
  * 파싱은 다음 순서대로 이루어집니다.
  * 1.구분자 갯수 확인(strcnt함수 이용)
@@ -159,9 +169,12 @@ int parse_command(int line_index)
 	char * seperated_string = NULL; //strsep함수로 분리된 문자열은 여기에 저장됩니다. 이후에 값을 parse_str_array의 원소에 저장할 것입니다.
 	char * delimiter = ":"; //구분자 변수입니다.
 	
+	parsed_string* parsed_struct = calloc(1,sizeof(parsed_string)); //parsed_string에 저장될 원소입니다. 만약 커맨드에 오류가 있다면 free로 메모리를 없애고 parsed_array에는 아무 값도 저장되지 않습니다.
+	
 	//먼저 형식에 맞는지 확인합니다. 기본적으로 커맨드는 ':' 문자가 3개 존재해야합니다.
 	if (letter_cnt(input_string_array[line_index],*delimiter) != 3)
 	{
+		free(parsed_struct);
 		return 0; //오류가 있습니다. 다른 문제가 있는지 검사해야합니다.
 	}
 	
@@ -171,15 +184,28 @@ int parse_command(int line_index)
 	printf("id:%s	\n",seperated_string);
 	if (!check_id(seperated_string)) //먼저 아이디부분을 확인합니다. 아이디는 2~6자의 영어,숫자로만 이루어져야합니다.
 	{
+		free(parsed_struct);
+		printf("이거 오류가 있는 커맨드입니다. 작동하면 안되요 안되\n");
+		return 0;
+	}
+	else
+	{
+		parsed_struct->id = strdup(seperated_string);
+	}
+
+	//이번에는 action 값을 파싱으로 가져옵니다.
+	seperated_string = strsep(&copied_string, delimiter);
+	/*
+	if (!check_action(line_index))
+	{
+		free(parsed_struct);
 		printf("이거 오류가 있는 커맨드입니다. 작동하면 안되요 안되\n");
 	}
 	else
 	{
-		
+		parsed_struct->action = strdup(seperated_string);
 	}
-
-	seperated_string = strsep(&copied_string, delimiter);
-	//printf("action:%s	",seperated_string);
+	*/
 	
 	seperated_string = strsep(&copied_string, delimiter);
 	//printf("pipe-id:%s	길이=%d",seperated_string,strlen(seperated_string));
@@ -187,6 +213,7 @@ int parse_command(int line_index)
 	seperated_string = strsep(&copied_string, delimiter);
 	//printf("command:%s",seperated_string);
 	
+	parse_str_array[line_index] = parsed_struct;
 	return 1;
 }
 

@@ -48,7 +48,7 @@ typedef struct parsed_string
 
 } parsed_string;
 
-parsed_string * parse_str_array; //파싱된 후, 내용이 저장된 구조체를 여기에 저장합니다. 접근은 줄번호로 접근합니다.
+parsed_string ** parse_str_array; //파싱된 후, 내용이 저장된 구조체를 여기에 저장합니다. 접근은 줄번호로 접근합니다.
 
 int current_line; //현재 실행중인 행입니다. 이 값이 위의 input_setting구조체 변수의 배열의 인덱스로 쓰입니다.
 
