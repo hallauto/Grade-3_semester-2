@@ -28,17 +28,51 @@ void file_open(char **argv)
 	
 	read_config_file();
 }
+
 /**
- * 실제로 파싱을 하는 함수입니다. 한 줄을 읽으면 한번 호출 됩니다. 파싱은 다음 순서대로 이루어집니다.
+ * 특정 문자열에서 특정 문자의 갯수를 세는 코드입니다.
+ * char* string: 특정 문자를 포함한 문자열
+ * char letter: 찾는 문자
+ */
+ int letter_cnt(char * string, char letter)
+ {
+	 int result = 0;
+	 
+	 while (*string) //string안에 값이 NULL이면 문자열이 끝난것이므로 루프가 끝납니다.
+	 {
+		 if (letter == * string)
+		 {
+			 result++;
+		 }
+		 string++;
+	 }
+	 
+	 return result;
+ }
+ 
+/**
+ * 실제로 파싱을 하는 함수입니다. 한 줄을 읽으면 한번 호출 됩니다. 
+ * 
+ * int line_index: 파싱할 줄의 번호가 곧 input_string_array와 parse_str_array의 인덱스가 됩니다.
+ * 
+ * 파싱은 다음 순서대로 이루어집니다.
  * 1.구분자 갯수 확인(strcnt함수 이용)
  * 2.각각의 부분을 파싱(strsep이용), 임시 변수에 저장
  * 3.이 내용을 parse_str_array에 저장
  * 4.마지막으로 오류 검사
+ * 
  */
-int parse_command()
+int parse_command(int line_index)
 {
+	//먼저 형식에 맞는지 확인합니다. 기본적으로 커맨드는 ':' 문자가 3개 존재해야합니다.
+	if (letter_cnt(input_string_array[line_index],':') != 3)
+	{
+		return 0; //오류가 있습니다. 다른 문제가 있는지 검사해야합니다.
+	}
 	
+	return 1;
 }
+
 
 /**
  * config파일을 읽고 파싱과 적절한 구조체 생성을 지시하는 함수입니다.
@@ -48,13 +82,13 @@ void read_config_file()
 	size_t size = 0; //getline함수를 쓰기위해서 존재하는 변수입니다. 이 안에 값이 쓰일 일은 없습니다.
 	read_new_line_letter();	//이 함수로 config파일의 줄 수를 확인하고 저장합니다.
 	input_string_array = calloc(line_many,sizeof(char *));
-	parse_str_array = calloc(line_many,sizeof(parseed_string *));
+	parse_str_array = calloc(line_many,sizeof(parsed_string *));
 
 	int line_index;
 	for (line_index = 0; !feof(argv_file); line_index++) //한줄씩 읽고 파싱합니다.
 	{
 		getline(&input_string_array[line_index],&size,argv_file);
-		if (input_string_array[line_index][0] != '#' && strlen(input_string_array[line_index]) > 0)
+		if (input_string_array[line_index][0] != '#' && input_string_array[line_index][0] != '\n' && strlen(input_string_array[line_index]) > 0)
 		{
 			printf("%s",input_string_array[line_index]);
 			//이 줄은 주석이 아닙니다. 또한 빈 줄도 아닙니다. 따라서 바로 파싱에 들어갑니다.
