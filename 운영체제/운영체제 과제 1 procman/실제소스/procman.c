@@ -195,11 +195,11 @@ int parse_command(int line_index)
 		free(parsed_struct);
 		if (check_result == 1)
 		{
-			printf("아이디가 형식에 맞지않습니다.\n");
+			printf("invalid id ‘%s’ in line %d, ignored\n", seperated_string, line_index);
 		}
 		else if (check_result == 2)
 		{
-			printf("중복인 아이디입니다.\n");
+			printf("duplicate id ‘%s’ in line %d, ignored\n", seperated_string, line_index);
 		}
 		return 0;
 	}
@@ -213,6 +213,7 @@ int parse_command(int line_index)
 	/*
 	if (!check_action(line_index))
 	{
+		free(parsed_struct->id);
 		free(parsed_struct);
 		printf("이거 오류가 있는 커맨드입니다. 작동하면 안되요 안되\n");
 	}
