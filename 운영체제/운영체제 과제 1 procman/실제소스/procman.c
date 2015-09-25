@@ -22,7 +22,7 @@ void file_open(char **argv)
 
 	if (argv_file == NULL)
 	{
-		fprintf(stderr,"config-file open error\n");
+		fprintf(stderr,"failed to load config file ‘%s’\n",file_name);
 		return;
 	}
 	
@@ -186,12 +186,90 @@ void file_open(char **argv)
 	 return 1;
  }
  
+ /**
+  * 파이프 아이디 형식 검사 및, 사용 가능 여부를 검사하는 함수입니다.
+  * char * string: 검사할 문자열입니다.
+  * return: int 오류 코드
+  * 0: 오류 없음
+  * 1: 아이디의 형식이 잘못되었습니다.
+  * 2: 존재하지 않는 아이디입니다.
+  * 3: respawn으로 실행되었기에 파이프 라인으로 지정할 수 없는 아이디입니다.
+  * 4: 이미 다른 프로세스와 파이프로 연결되어 있는 아이디입니다.
+  */
+ int check_pipe_id(char* string)
+ {
+	 int arscii_a = 97;
+	 int arscii_z = 122;
+	 int arscii_0 = 48;
+	 int arscii_9 = 57;
+	 
+	 int string_index = 0;
+	 int string_length = 0;
+	 remove_string_space(string);
+	 string_length = strlen(string);
+	 
+	 if (string_length < 1) //파이프가 지정되어있지 않습니다.
+	 {
+		 return 0;
+	 }
+	 else if(string_length < 2 || string_length > 8)
+	 {
+		 return 1;
+	 }
+	 	
+	//이제 문자열이 형식에 맞는지 검사합니다.
+	for (string_index = 0; string_index < string_length; string_index++)
+	{
+		if (string[string_index]< arscii_a || string[string_index] > arscii_z)
+		{
+			if (string[string_index] < arscii_0 || string[string_index] > arscii_9)
+				return 1;
+		}
+	}
+	
+	//해당 프로세스가 다른 프로세스의 파이프에 쓰이는지 검사합니다.
+	int array_index; //parsed_array를 탐색하는데에 쓰일 배열입니다.
+	for (array_index = 0; array_index < line_many; array_index++)
+	{
+		if (parse_str_array[array_index] == NULL) //parse_str_array에서 정상적인 커맨드가 파싱되어 저장되지 않은 곳은 전부 NULL값입니다. 당연히 탐색할 필요가 없습니다.
+			continue;
+		else if(strcmp(parse_str_array[array_index]->pipe_id,string)==0) //이제 pipe_id값이 같은 구조체가 존재하는지 검사합니다. 존재한다면 파이프라인으로 연결할 수 없습니다.
+		{
+			return 4;
+		}
+	}
+	
+	//마지막으로 해당 프로세스가 있는지, 있다면 사용 가능한지 검사합니다.
+	for (array_index = 0; array_index < line_many; array_index++)
+	{
+		if (parse_str_array[array_index] == NULL) //parse_str_array에서 정상적인 커맨드가 파싱되어 저장되지 않은 곳은 전부 NULL값입니다. 당연히 탐색할 필요가 없습니다.
+			continue;
+		else if(strcmp(parse_str_array[array_index]->id,string)==0) //이제 id값이 같은 구조체가 존재하는지 검사합니다. 존재한다면 파이프라인으로 연결할 수 있는지 확인합니다.
+		{
+			if (strcmp(parse_str_array[array_index]->action,ACTION_RESPAWN) == 0)
+			{
+				return 3;
+			}
+			else
+			{
+				return 0;
+			}
+		}
+	}
+	
+	
+	return 2; //해당하는 아이디를 가진 프로세스는 없습니다.
+ }
+ 
 /**
  * 실제로 파싱을 하는 함수입니다. 한 줄을 읽으면 한번 호출 됩니다. 
  * 
  * int line_index: 파싱할 줄의 번호가 곧 input_string_array와 parse_str_array의 인덱스가 됩니다.
  * 
  * return int 오류 번호: 파싱중에 생긴 오류에 따라 번호가 반환됩니다. 이 오류를 구분해서 stderr에 출력합니다.
+ * 0: 오류 없음
+ * 1: 형식에 맞지 않습니다. 잘못된 config파일입니다.
+ * 2: 파싱후 확인한 결과, 오류가 있습니다. 오류 내용은 출력했으므로 다음 줄로 넘어가야합니다.
  * 
  * 파싱은 다음 순서대로 이루어집니다.
  * 1.구분자 갯수 확인(strcnt함수 이용)
@@ -220,17 +298,16 @@ int parse_command(int line_index)
 	copied_string = strdup(input_string_array[line_index]);
 	
 	seperated_string = strsep(&copied_string, delimiter);
-	printf("id:%s	\n",seperated_string);
 	if ((check_result = check_id(seperated_string))) //먼저 아이디부분을 확인합니다. 아이디는 2~6자의 영어,숫자로만 이루어져야합니다. 또한 중복이 없어야합니다.
 	{
 		free(parsed_struct);
 		if (check_result == 1)
 		{
-			printf("invalid id ‘%s’ in line %d, ignored\n", seperated_string, line_index);
+			printf("invalid id ‘%s’ in line %d, ignored\n", seperated_string, line_index + 1);
 		}
 		else if (check_result == 2)
 		{
-			printf("duplicate id ‘%s’ in line %d, ignored\n", seperated_string, line_index);
+			printf("duplicate id ‘%s’ in line %d, ignored\n", seperated_string, line_index + 1);
 		}
 		return 1;
 	}
@@ -247,7 +324,7 @@ int parse_command(int line_index)
 		free(parsed_struct);
 		if (check_result == 1)
 		{
-			printf("invalid action ‘%s’ in line %d, ignored\n",seperated_string,line_index);
+			printf("invalid action ‘%s’ in line %d, ignored\n",seperated_string,line_index + 1);
 		}
 		return 1;
 	}
@@ -257,7 +334,33 @@ int parse_command(int line_index)
 	}
 	
 	seperated_string = strsep(&copied_string, delimiter);
-	//printf("pipe-id:%s	길이=%d",seperated_string,strlen(seperated_string));
+	if((check_result = check_pipe_id(seperated_string)))
+	{
+		free(parsed_struct->id);
+		free(parsed_struct);
+		if (check_result == 1 && strcmp(seperated_string,""))
+		{
+			printf("invalid pipe-id ‘%s’ in line %d, ignored\n", seperated_string, line_index + 1);
+		}
+		else if (check_result == 2)
+		{
+			printf("unknown pipe-id ‘%s’ in line %d, ignored\n",seperated_string, line_index + 1);
+		}
+		else if (check_result == 3)
+		{
+			printf("pipe not allowed for ‘respawn’ tasks in line %d, ignored\n", line_index + 1);
+		}
+		else if (check_result == 4)
+		{
+			printf("pipe not allowed for already piped tasks in line %d, ignored\n", line_index + 1);
+		}
+		
+		return 1;
+	}
+	else
+	{
+		parsed_struct->pipe_id = strdup(seperated_string);
+	}
 
 	seperated_string = strsep(&copied_string, delimiter);
 	//printf("command:%s",seperated_string);
