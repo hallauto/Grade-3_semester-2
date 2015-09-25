@@ -193,8 +193,7 @@ void file_open(char **argv)
   * 0: 오류 없음
   * 1: 아이디의 형식이 잘못되었습니다.
   * 2: 존재하지 않는 아이디입니다.
-  * 3: respawn으로 실행되었기에 파이프 라인으로 지정할 수 없는 아이디입니다.
-  * 4: 이미 다른 프로세스와 파이프로 연결되어 있는 아이디입니다.
+  * 3: 이미 다른 프로세스와 파이프로 연결되어 있는 아이디입니다.
   */
  int check_pipe_id(char* string)
  {
@@ -205,6 +204,9 @@ void file_open(char **argv)
 	 
 	 int string_index = 0;
 	 int string_length = 0;
+	 
+	 //int id_exist = 0; // 해당 아이디가 존재하는지 나타내는 변수입니다.
+	 
 	 remove_string_space(string);
 	 string_length = strlen(string);
 	 
@@ -235,7 +237,7 @@ void file_open(char **argv)
 			continue;
 		else if(strcmp(parse_str_array[array_index]->pipe_id,string)==0) //이제 pipe_id값이 같은 구조체가 존재하는지 검사합니다. 존재한다면 파이프라인으로 연결할 수 없습니다.
 		{
-			return 4;
+			return 3;
 		}
 	}
 	
@@ -244,20 +246,11 @@ void file_open(char **argv)
 	{
 		if (parse_str_array[array_index] == NULL) //parse_str_array에서 정상적인 커맨드가 파싱되어 저장되지 않은 곳은 전부 NULL값입니다. 당연히 탐색할 필요가 없습니다.
 			continue;
-		else if(strcmp(parse_str_array[array_index]->id,string)==0) //이제 id값이 같은 구조체가 존재하는지 검사합니다. 존재한다면 파이프라인으로 연결할 수 있는지 확인합니다.
+		else if(strcmp(parse_str_array[array_index]->id,string)==0) //이제 id값이 같은 구조체가 존재하는지 검사합니다.
 		{
-			if (strcmp(parse_str_array[array_index]->action,ACTION_RESPAWN) == 0)
-			{
-				return 3;
-			}
-			else
-			{
-				return 0;
-			}
+			return 0;
 		}
 	}
-	
-	
 	return 2; //해당하는 아이디를 가진 프로세스는 없습니다.
  }
  
@@ -292,6 +285,7 @@ int parse_command(int line_index)
 	if (letter_cnt(input_string_array[line_index],*delimiter) != 3)
 	{
 		free(parsed_struct);
+		printf("invalid format in line %d, ignored\n",line_index + 1);
 		return 1; //오류가 있습니다. 다른 문제가 있는지 검사해야합니다.
 	}
 	
@@ -348,13 +342,16 @@ int parse_command(int line_index)
 		}
 		else if (check_result == 3)
 		{
-			printf("pipe not allowed for ‘respawn’ tasks in line %d, ignored\n", line_index + 1);
-		}
-		else if (check_result == 4)
-		{
 			printf("pipe not allowed for already piped tasks in line %d, ignored\n", line_index + 1);
 		}
 		
+		return 1;
+	}
+	else if (strcmp(parsed_struct->action,ACTION_RESPAWN) == 0 && strcmp(seperated_string,""))
+	{
+		free(parsed_struct->id);
+		free(parsed_struct);
+		printf("pipe not allowed for 'respawn' tasks in line %d, ignored\n",line_index + 1);
 		return 1;
 	}
 	else
