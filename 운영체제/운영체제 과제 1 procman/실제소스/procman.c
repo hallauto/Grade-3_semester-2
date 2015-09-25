@@ -110,6 +110,7 @@ void file_open(char **argv)
   * 0 = 문제없습니다. 정상적으로 다음 단계로 넘어갑니다.
   * 1 = 아이디의 형식이 잘못되었습니다.
   * 2 = 중복되는 아이디가 존재합니다.
+  * 3 = 이미 파이프에 연결된 아이디입니다.
   */
  int check_id(char * string)
  {
@@ -146,7 +147,7 @@ void file_open(char **argv)
 	{
 		if (parse_str_array[array_index] == NULL) //parse_str_array에서 정상적인 커맨드가 파싱되어 저장되지 않은 곳은 전부 NULL값입니다. 당연히 탐색할 필요가 없습니다.
 			continue;
-		else if(strcmp(parse_str_array[array_index]->id,string)==0) //이제 id값이 같은 구조체가 존재하는지 검사합니다. 존재한다면 0(오류)을 반환합니다.
+		else if(strcmp(parse_str_array[array_index]->id,string)==0) //이제 id값이 같은 구조체가 존재하는지 검사합니다. 존재한다면 2(오류)을 반환합니다.
 		{
 			return 2;
 		}
@@ -229,19 +230,18 @@ void file_open(char **argv)
 		}
 	}
 	
-	//해당 프로세스가 다른 프로세스의 파이프에 쓰이는지 검사합니다.
-	int array_index; //parsed_array를 탐색하는데에 쓰일 배열입니다.
-	for (array_index = 0; array_index < line_many; array_index++)
+	//이미 파이프로 연결된 프로세스를 이용하는지 검사합니다.
+	int pipe_array_index; //pipe_id_array를 탐색하는데에 쓰일 배열입니다.
+	for (pipe_array_index = 0; pipe_array_index < pipe_many ; pipe_array_index++)
 	{
-		if (parse_str_array[array_index] == NULL) //parse_str_array에서 정상적인 커맨드가 파싱되어 저장되지 않은 곳은 전부 NULL값입니다. 당연히 탐색할 필요가 없습니다.
-			continue;
-		else if(strcmp(parse_str_array[array_index]->pipe_id,string)==0) //이제 pipe_id값이 같은 구조체가 존재하는지 검사합니다. 존재한다면 파이프라인으로 연결할 수 없습니다.
+		if (strcmp(string,pipe_id_array[pipe_array_index]) == 0)
 		{
 			return 3;
 		}
 	}
 	
 	//마지막으로 해당 프로세스가 있는지, 있다면 사용 가능한지 검사합니다.
+	int array_index; //parsed_array를 탐색하는데에 쓰일 배열입니다.
 	for (array_index = 0; array_index < line_many; array_index++)
 	{
 		if (parse_str_array[array_index] == NULL) //parse_str_array에서 정상적인 커맨드가 파싱되어 저장되지 않은 곳은 전부 NULL값입니다. 당연히 탐색할 필요가 없습니다.
@@ -347,12 +347,21 @@ int parse_command(int line_index)
 		
 		return 1;
 	}
-	else if (strcmp(parsed_struct->action,ACTION_RESPAWN) == 0 && strcmp(seperated_string,""))
+	else if (strcmp(seperated_string,"") != 0)
 	{
-		free(parsed_struct->id);
-		free(parsed_struct);
-		printf("pipe not allowed for 'respawn' tasks in line %d, ignored\n",line_index + 1);
-		return 1;
+		if (strcmp(parsed_struct->action,ACTION_RESPAWN)==0) //check_pipe_id와 별개로, pipe_id가 지정된 상태에서 action이 respawn인지 검사합니다.  맞다면 오류입니다.
+		{
+			free(parsed_struct->id);
+			free(parsed_struct);
+			printf("pipe not allowed for 'respawn' tasks in line %d, ignored\n",line_index + 1);
+			return 1;
+		}
+		else
+		{
+			pipe_id_array[pipe_many++] = strdup(parsed_struct->id);
+			pipe_id_array[pipe_many++] = strdup(seperated_string);
+			parsed_struct->pipe_id = strdup(seperated_string);
+		}
 	}
 	else
 	{
@@ -376,6 +385,8 @@ void read_config_file()
 	read_new_line_letter();	//이 함수로 config파일의 줄 수를 확인하고 저장합니다.
 	input_string_array = calloc(line_many,sizeof(char *));
 	parse_str_array = calloc(line_many,sizeof(parsed_string *));
+	pipe_id_array = calloc(line_many * 2,sizeof(char *));
+	pipe_many = 0;
 
 	int line_index;
 	for (line_index = 0; !feof(argv_file); line_index++) //한줄씩 읽고 파싱합니다.
