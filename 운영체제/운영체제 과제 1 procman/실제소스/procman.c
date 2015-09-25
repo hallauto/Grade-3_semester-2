@@ -358,8 +358,6 @@ int parse_command(int line_index)
 		}
 		else
 		{
-			pipe_id_array[pipe_many++] = strdup(parsed_struct->id);
-			pipe_id_array[pipe_many++] = strdup(seperated_string);
 			parsed_struct->pipe_id = strdup(seperated_string);
 		}
 	}
@@ -369,9 +367,22 @@ int parse_command(int line_index)
 	}
 
 	seperated_string = strsep(&copied_string, delimiter);
-	//printf("command:%s",seperated_string);
+	remove_string_space(seperated_string);
+	if (strcmp(seperated_string,"") == 0) //커맨드 부분이 공백인지 확인합니다. 만약 공백이라면 오류 메시지를 전송합니다. 만약 파이프 연결이 등록되어 있었다면 이 사항도 취소합니다.
+	{
+		printf("empty command in line %d, ignored\n", line_index + 1);
+		return 1;
+	}
+	else //이 줄은 정상적으로 작성되었습니다. 이제 파이프로 연결되었다는 사항과 기타 내용을 등록합니다.
+	{
+		if (strcmp(parsed_struct->pipe_id,"") != 0)
+		{
+			pipe_id_array[pipe_many++] = strdup(parsed_struct->id);
+			pipe_id_array[pipe_many++] = strdup(parsed_struct->pipe_id);
+		}
+		parse_str_array[line_index] = parsed_struct;
+	}
 	
-	parse_str_array[line_index] = parsed_struct;
 	return 0;
 }
 
