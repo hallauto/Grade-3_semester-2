@@ -271,7 +271,7 @@ void file_open(char **argv)
  * 4.마지막으로 오류 검사
  * 
  */
-int parse_command(int line_index)
+int parse_config_string(int line_index)
 {
 	char * copied_string = NULL; //strsep함수를 사용하기위해서는 내용이 변해도 문제없는 문자열이 필요합니다. 이를 위해 strdup함수를 이용해서 문자열을 복제할 것입니다.
 	char * seperated_string = NULL; //strsep함수로 분리된 문자열은 여기에 저장됩니다. 이후에 값을 parse_str_array의 원소에 저장할 것입니다.
@@ -380,6 +380,7 @@ int parse_command(int line_index)
 			pipe_id_array[pipe_many++] = strdup(parsed_struct->id);
 			pipe_id_array[pipe_many++] = strdup(parsed_struct->pipe_id);
 		}
+		parsed_struct->command = strdup(seperated_string);
 		parse_str_array[line_index] = parsed_struct;
 	}
 	
@@ -405,7 +406,7 @@ void read_config_file()
 		getline(&input_string_array[line_index],&size,argv_file);
 		if (input_string_array[line_index][0] != '#' && input_string_array[line_index][0] != '\n' && strlen(input_string_array[line_index]) > 0)
 		{
-			parse_command(line_index);
+			parse_config_string(line_index);
 			
 		}
 	}
@@ -423,6 +424,41 @@ void signal_regist()
 }
 
 /**
+ * 커맨드를 파싱하는 함수입니다. 결과는 char** 로 전달됩니다.(동적 문자열의 배열)
+ * int line_index: 파싱할 커맨드가 있는 인덱스입니다. 이 인덱스는 parse_str_array의 인덱스입니다.
+ * return parse_result: execv의 두번째 인자(인자 배열)이 될 '인수들의 배열'입니다. NULL인지 꼭 검사하세요. NULL이라면 오류가 있다는 것입니다.
+ */
+char** parse_command(int line_index)
+{
+	char ** parse_result = NULL;
+	char * copied_string = NULL; //strsep함수를 사용하기위해서는 내용이 변해도 문제없는 문자열이 필요합니다. 이를 위해 strdup함수를 이용해서 문자열을 복제할 것입니다.
+	char * delimiter = " "; //커맨드의 구분자는 스페이스 바입니다.
+	char * seperated_string = NULL;
+	int parameter_many; //인자의 갯수입니다. 이를 계산해서 문자열 배열 parse_result에 필요한 길이가 얼마인지 알아냅니다.
+	
+	//먼저 인자의 갯수가 몇개인지 알아봐야합니다. 이를 검색하기위해 strsep를 활용합니다.
+	copied_string = strdup(parse_str_array[line_index]->command);
+	
+	for(parameter_many=0;(seperated_string = strsep(&copied_string, delimiter)) != NULL;parameter_many++)
+	{
+	}
+	
+	//이제 필요한 문자열 배열의 길이를 알았으니 이에 맞춰 동적으로 메모리를 할당하고 다시 인자를 분해해서 배열에 저장합니다.
+	parse_result = calloc(parameter_many + 1,sizeof(char));
+	
+	free(copied_string);
+	copied_string = strdup(parse_str_array[line_index]->command);
+	
+	for(parameter_many=0;(seperated_string = strsep(&copied_string, delimiter)) != NULL;parameter_many++)
+	{
+		parse_result[parameter_many] = strdup(seperated_string);
+		printf("%s\n",seperated_string);
+	}
+	
+	return parse_result;
+}
+
+/**
  * 프로세스를 실행시키는 함수입니다. 여기에서 자식 프로세스를 만듭니다.
  */
 void process_run()
@@ -432,7 +468,13 @@ void process_run()
 	
 	for (line_index = 0; line_index < line_many; line_index++)
 	{
-		
+		if (parse_str_array[line_index] == NULL)
+			continue;
+		else
+		{
+			//커맨드 부분의 파싱이 필요합니다. 파싱에 쓰일 구분자(delimeter)는 ' '(스페이스 바) 뿐입니다. 훨씬 쉽겠네요 :-)
+			seperated_command = parse_command(line_index);
+		}
 	}
 }
 
