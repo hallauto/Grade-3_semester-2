@@ -414,6 +414,29 @@ void read_config_file()
 }
 
 /**
+ * 시그널의 기본동작 대신 지정된 동작을 하도록 저장합니다.
+ * 이에 대한 자세한 내용은 나중에 만들 예정입니다. 아직 시그널 처리가 어떻게 이뤄져야하는지 모르겠습니다.
+ */
+void signal_regist()
+{
+	
+}
+
+/**
+ * 프로세스를 실행시키는 함수입니다. 여기에서 자식 프로세스를 만듭니다.
+ */
+void process_run()
+{
+	int line_index = 0; //현재 실행중인 프로그램의 줄번호가 배열의 인덱스입니다.
+	char ** seperated_command = NULL;
+	
+	for (line_index = 0; line_index < line_many; line_index++)
+	{
+		
+	}
+}
+
+/**
  * \n의 갯수 = 행의 갯수를 읽는 함수입니다. 이후에 이 행의 갯수 만큼 parseed_string 구조체의 배열을 동적으로 할당할 것입니다.
  */ 
 void read_new_line_letter()
@@ -445,6 +468,8 @@ int main (int argc, char **argv)
 	else
 	{
 		file_open(argv);
+		signal_regist();
+		process_run();
 	}
 	return 0;
 }

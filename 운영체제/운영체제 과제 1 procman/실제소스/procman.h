@@ -68,6 +68,8 @@ int check_pipe_id(char* string);
 void file_open(char **argv);
 int letter_cnt(char * string, char letter);
 int parse_command(int line_index);
+void process_run();
 void read_config_file();
 void read_new_line_letter();
 void remove_string_space(char* string);
+void signal_regist();
