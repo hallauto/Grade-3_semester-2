@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 
-//한 줄의 길이는 최대 1000바이트입니다.
-#define MAX_LENGTH 1000
-
 //에러를 확인할 때 쓰는 코드입니다. 이후 결과 파일에 출력할 때, 이 값과 해당 라인의 에러 번호를 비교해서 검사합니다.
 const int NONE_ERROR = 0;
 const int ERROR_NO_SELECT = 1;
@@ -34,12 +31,10 @@ char** input_string_array;
 /*
 설정파일들의 각 라인을 파싱하고 그 내용을 이 구조체에 저장합니다. 각각의 구조체들은 배열로 보관됩니다.
 int line_num 해당 라인의 번호입니다. 이 값이 구조체 배열에서의 인덱스가 됩니다.
-int error_num 에러 여부를 알려주는 멤버변수입니다. 오류가 없다면 0이 ,오류가 있다면, 그 라인은 에러 번호를 0 이상을 주고 그외의 값은 넣지않습니다.
 */
 typedef struct parsed_string
 {
 	int line_num;
-	int error_num;
 
 	char* id;
 	char action[10];
@@ -53,9 +48,26 @@ parsed_string ** parse_str_array; //파싱된 후, 내용이 저장된 구조체
 char ** pipe_id_array; //파이프로 연결된 아이디들의 배열입니다. 배열의 길이는 line_many*2입니다.
 int pipe_many; //파이프로 연결된 아이디 갯수입니다.
 
+typedef struct process_running
+{
+	int process_id;
+	char * program_id;
+	
+	char *action;
+	int time_out;
+	
+}process_running;
+
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+//함수 선언을 하는 구간입니다. 자세한 설명은 각각의 함수 정의 부분에 있습니다.
 
 
+int check_action(char* string);
+int check_id(char * string);
+int check_pipe_id(char* string);
+void file_open(char **argv);
+int letter_cnt(char * string, char letter);
+int parse_command(int line_index);
 void read_config_file();
 void read_new_line_letter();
-void file_open(char **argv);
+void remove_string_space(char* string);
