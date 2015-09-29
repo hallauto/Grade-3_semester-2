@@ -48,13 +48,18 @@ parsed_string ** parse_str_array; //파싱된 후, 내용이 저장된 구조체
 char ** pipe_id_array; //파이프로 연결된 아이디들의 배열입니다. 배열의 길이는 line_many*2입니다.
 int pipe_many; //파이프로 연결된 아이디 갯수입니다.
 
+/**
+ * 실행중인 프로세스를 나타내는 구조체입니다.
+ * int process_id
+ * char* program_id
+ * char* action
+ */
 typedef struct process_running
 {
 	int process_id;
 	char * program_id;
 	
 	char *action;
-	int time_out;
 	
 }process_running;
 
