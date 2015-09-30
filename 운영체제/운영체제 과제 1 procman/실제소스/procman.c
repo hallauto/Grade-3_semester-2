@@ -440,19 +440,9 @@ void sigchld_handler_parents(int signo)
 				break;
 		}
 		
-		if (proc_array_index >= line_many)
-		{
-			return;
-		}
-		
-		if (status == EXIT_FAILURE)
-		{
-			printf("failed to execute command‘%s’\n",parse_str_array[proc_array_index]->command);
-		}
-		
 		printf("종료된 프로세스 이름=%s\n",parse_str_array[proc_array_index]->id);
 		
-		if (strcmp(parse_str_array[proc_array_index]->action, ACTION_RESPAWN))
+		if (strcmp(parse_str_array[proc_array_index]->action, ACTION_RESPAWN) == 0)
 		{
 			oneline_process_run(proc_array_index);
 		}
@@ -562,7 +552,7 @@ void oneline_process_run(int line_index)
 			if(execv(seperated_string[0],seperated_string) == -1)
 			{
 				printf("failed to execute command‘%s’\n",parse_str_array[line_index]->command);
-				exit(99);
+				exit(EXIT_FAILURE);
 			}
 		}
 		else
@@ -584,12 +574,13 @@ void oneline_process_run(int line_index)
 			}
 			if(execv(seperated_string[0],seperated_string) == -1)
 			{
+				printf("failed to execute command‘%s’\n",parse_str_array[line_index]->command);
 				exit(EXIT_FAILURE);
 			}
 		}
 		else
 		{
-			waitpid(-1,&child_return,0); //이제 해당 프로그램이 실행이 끝날때까지 기다립니다. 그것이 action wait입니다.
+			waitpid(new_proc->process_id,&child_return,0); //이제 해당 프로그램이 실행이 끝날때까지 기다립니다. 그것이 action wait입니다.
 		}
 	}
 	else if (strcmp(parse_str_array[line_index]->action,ACTION_RESPAWN) == 0)
@@ -640,9 +631,8 @@ void process_run()
 			continue;
 		else
 		{
-			printf("line_index = %d ",line_index);
 			oneline_process_run(line_index);
-			usleep(1000);
+			usleep(10000);
 		}
 	}
 	
