@@ -50,9 +50,9 @@ int pipe_many; //파이프로 연결된 아이디 갯수입니다.
 
 /**
  * 실행중인 프로세스를 나타내는 구조체입니다.
- * int process_id
- * char* program_id
- * char* action
+ * int process_id 해당 프로세스의 프로세스 아이디입니다.
+ * char* program_id config파일에서 언급된 프로그램 아이디입니다.
+ * char* action 설정된 액션입니다.
  */
 typedef struct process_running
 {
@@ -62,6 +62,8 @@ typedef struct process_running
 	char *action;
 	
 }process_running;
+
+process_running ** proc_array; //실행 중인 프로세스에 관한 정보가 담긴 구조체 배열입니다. 접근은 줄번호로 접근합니다.
 
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 //함수 선언을 하는 구간입니다. 자세한 설명은 각각의 함수 정의 부분에 있습니다.
