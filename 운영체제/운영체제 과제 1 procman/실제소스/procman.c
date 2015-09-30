@@ -420,7 +420,18 @@ void connect_pipe()
 }
 
 /**
- * 부모 프로세스의 SIGINT 핸들러입니다. 이 함수가 전달되면 부모 프로세스는 자식프로세스들에게 SIGINT를 전달합니다.
+ * 부모 프로세스의 SIGCHLD 핸들러입니다. 자식 프로세스가 종료되면 SIGCHLD가 전달되고, 이 때에 waitpid함수로 자식 프로세스의 종료를 확인합니다. 만약 프로세스가 respawn이라면 다시 시작 시킵니다.
+ * int signo: 전달된 시그널의 번호입니다.
+ */
+void sigchld_handler_parrents(int signo)
+{
+
+}
+
+/**
+ * 부모 프로세스의 SIGINT 핸들러입니다. 이 함수가 전달되면 부모 프로세스는 자식프로세스들에게 SIGINT를 전달하면서 프로세스가 전부 종료되었는지 검사합니다. 
+ * 만약 종료되지 않은 프로세스가 있다면 sleep으로 좀 기다리다가 다시 한번 보내고 또 검사하고... 이를 반복합니다.
+ * 참고로 respawn이고 뭐고 전부 다시 실행될 수 없도록 죽입니다.(예제의 Task4의 경우입니다.) 이것이 위의 SIGCHLD핸들러와의 차이점입니다.
  * int signo: 전달된 시그널의 번호입니다.
  */
 void sigint_handler_parrents(int signo)
@@ -429,31 +440,14 @@ void sigint_handler_parrents(int signo)
 }
 
 /**
- * 부모 프로세스의 SIGTERM 핸들러입니다. 이 함수가 전달되면 부모 프로세스는 자식프로세스들에게 SIGINT를 전달합니다.
+ * 부모 프로세스의 SIGTERM 핸들러입니다. 이 함수가 전달되면 부모 프로세스는 자식프로세스들에게 SIGINT를 전달하면서 프로세스가 전부 종료되었는지 검사합니다. 
+ * 만약 종료되지 않은 프로세스가 있다면 sleep으로 좀 기다리다가 다시 한번 보내고 또 검사하고... 이를 반복합니다.
  * int signo: 전달된 시그널의 번호입니다.
  */
 void sigterm_handler_parrents(int signo)
 {
 
 }
-/**
- * 자식 프로세스의 SIGINT 핸들러입니다. 이 함수가 전달되면 자식 프로세스는 종료되고, 그 사실이 정상적으로 부모에게 알려져야합니다.
- * int signo: 전달된 시그널의 번호입니다.
- */
-void sigint_handler_child(int signo)
-{
-	
-}
-
-/**
- * 자식 프로세스의 SIGTERM 핸들러입니다. 이 함수가 전달되면 자식 프로세스는 종료되고, 그 사실이 정상적으로 부모에게 알려져야합니다.
- * int signo: 전달된 시그널의 번호입니다.
- */
-void sigterm_handler_child(int signo)
-{
-	
-}
-
 /**
  * 시그널의 기본동작 대신 지정된 동작을 하도록 저장합니다.
  * 그 이전에 말하자면, 이 함수는 fork함수의 반환값으로 부모, 자식 프로세스를 구분합니다. 즉, 전달되는 pid가 0이 아니면 자식 프로세스의 핸들러, 맞다면 부모 프로세스 핸들러를 등록해야합니다.
@@ -505,7 +499,6 @@ char** parse_command(int line_index)
 void process_run()
 {
 	int line_index = 0; //현재 실행시킬 프로그램의 줄번호가 배열의 인덱스입니다.
-	int back_run_proc_id = 0; //현재 백그라운드에서 실행 중인 프로세스의 아이디입니다. 정확히 얘기하자면, 이들은 waitpid의 반환값을 받습니다.
 	char ** seperated_command = NULL;
 
 	proc_array = calloc(line_many,sizeof(process_running *));
@@ -536,10 +529,13 @@ void process_run()
 				if (new_proc->process_id == 0)
 				{
 					//여기서 부터는 자식 프로세스의 영역입니다. 여기에서 exec를 작동시켜야합니다. 물론 그이전에 파이프 연결과 시그널 핸들러 등록도 이루어져야 합니다.
-					connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
+					if (strcmp(parse_str_array[line_index]->pipe_id,"") != 0) //파이프에 연결을 해야하는지 검사합니다.
+					{
+						connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
+					}
 				}
 
-				waitpid(new_proc->process_id,0); //이제 해당 프로그램이 실행이 끝날때까지 기다립니다. 그것이 wait입니다.
+				waitpid(new_proc->process_id,0); //이제 해당 프로그램이 실행이 끝날때까지 기다립니다. 그것이 action wait입니다.
 
 			}
 			else if (strcmp(parse_str_array[line_index]->action,ACTION_RESPAWN) == 0)
@@ -549,10 +545,11 @@ void process_run()
 				if (new_proc->process_id == 0)
 				{
 					//여기서 부터는 자식 프로세스의 영역입니다. 여기에서 exec를 작동시켜야합니다. 물론 그이전에 파이프 연결과 시그널 핸들러 등록도 이루어져야 합니다.
-					connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
+					if (strcmp(parse_str_array[line_index]->pipe_id,"") != 0) //파이프에 연결을 해야하는지 검사합니다.
+					{
+						connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
+					}
 				}
-
-				waitpid(new_proc->process_id,0); //이제 해당 프로그램이 실행이 끝날때까지 기다립니다. 그것이 wait입니다.
 
 			}
 		}

@@ -31,6 +31,11 @@ char** input_string_array;
 /*
 설정파일들의 각 라인을 파싱하고 그 내용을 이 구조체에 저장합니다. 각각의 구조체들은 배열로 보관됩니다.
 int line_num 해당 라인의 번호입니다. 이 값이 구조체 배열에서의 인덱스가 됩니다.
+char* id 해당 프로그램의 아이디입니다.
+char action[10]
+char pipe_id
+char command
+
 */
 typedef struct parsed_string
 {
