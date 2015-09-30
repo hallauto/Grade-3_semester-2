@@ -487,7 +487,7 @@ char** parse_command(int line_index)
 	for(parameter_many=0;(seperated_string = strsep(&copied_string, delimiter)) != NULL;parameter_many++)
 	{
 		parse_result[parameter_many] = strdup(seperated_string);
-		printf("%s\n",seperated_string);
+		printf("%s\n",parse_result[parameter_many]);
 	}
 	
 	return parse_result;
@@ -498,12 +498,14 @@ char** parse_command(int line_index)
  */
 void oneline_process_run(int line_index)
 {
-	char ** seperated_command = NULL;
+	char* process_name = 0; //exec함수에 쓰일 process_name입니다.
+	char* delimiter = " ";
 	int child_return = 0; //자식 프로세스가 종료 후 반환한 값에 대한 내용입니다.
-	
-	//커맨드 부분의 파싱이 필요합니다. 파싱에 쓰일 구분자(delimeter)는 ' '(스페이스 바) 뿐입니다. 훨씬 쉽겠네요 :-)
-	seperated_command = parse_command(line_index);
 
+	char* copied_string = strdup(parse_str_array[line_index]->command);
+	
+	process_name = strsep(&copied_string,delimiter);
+	
 	process_running* new_proc = calloc(1,sizeof(process_running)); //새로운 프로세스의 관리를 위한 구조체를 만듭니다.
 	new_proc->program_id = strdup(parse_str_array[line_index]->id); //기본적으로는 모든 프로세스에게 프로그램 아이디가 존재합니다. 이를 전달합니다.
 
@@ -525,6 +527,7 @@ void oneline_process_run(int line_index)
 			{
 				printf("프로세스 %s는 파이프로 프로세스 %s와 연결됩니다.\n",parse_str_array[line_index]->id,parse_str_array[line_index]->pipe_id);
 				connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
+				//execv();
 			}
 			exit(1);
 		}
