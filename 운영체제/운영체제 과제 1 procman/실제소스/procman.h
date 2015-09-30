@@ -79,7 +79,7 @@ int check_id(char * string);
 int check_pipe_id(char* string);
 void file_open(char **argv);
 int letter_cnt(char * string, char letter);
-char** parse_command(int line_index);
+void parse_command(char* result[20], char* str);
 int parse_config_string(int line_index);
 void process_run();
 void read_config_file();

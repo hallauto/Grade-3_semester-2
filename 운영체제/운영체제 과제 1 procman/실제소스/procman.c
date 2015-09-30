@@ -463,34 +463,31 @@ void signal_regist()
  * int line_index: 파싱할 커맨드가 있는 인덱스입니다. 이 인덱스는 parse_str_array의 인덱스입니다.
  * return parse_result: execv의 두번째 인자(인자 배열)이 될 '인수들의 배열'입니다. NULL인지 꼭 검사하세요. NULL이라면 오류가 있다는 것입니다.
  */
-char** parse_command(int line_index)
+void parse_command(char* result[20], char* str)
 {
-	char ** parse_result = NULL;
 	char * copied_string = NULL; //strsep함수를 사용하기위해서는 내용이 변해도 문제없는 문자열이 필요합니다. 이를 위해 strdup함수를 이용해서 문자열을 복제할 것입니다.
 	char * delimiter = " "; //커맨드의 구분자는 스페이스 바입니다.
 	char * seperated_string = NULL;
 	int parameter_many; //인자의 갯수입니다. 이를 계산해서 문자열 배열 parse_result에 필요한 길이가 얼마인지 알아냅니다.
-	
+
 	//먼저 인자의 갯수가 몇개인지 알아봐야합니다. 이를 검색하기위해 strsep를 활용합니다.
-	copied_string = strdup(parse_str_array[line_index]->command);
-	
+	copied_string = strdup(str);
+
 	for(parameter_many=0;(seperated_string = strsep(&copied_string, delimiter)) != NULL;parameter_many++)
 	{
 	}
-	
-	//이제 필요한 문자열 배열의 길이를 알았으니 이에 맞춰 동적으로 메모리를 할당하고 다시 인자를 분해해서 배열에 저장합니다.
-	parse_result = calloc(parameter_many + 1,sizeof(char));
-	
-	free(copied_string);
-	copied_string = strdup(parse_str_array[line_index]->command);
-	
+
+	if (copied_string != NULL && strcmp(copied_string,"") == 0)
+	{
+		free(copied_string);
+	}
+	copied_string = strdup(str);
+
 	for(parameter_many=0;(seperated_string = strsep(&copied_string, delimiter)) != NULL;parameter_many++)
 	{
-		parse_result[parameter_many] = strdup(seperated_string);
-		printf("%s\n",parse_result[parameter_many]);
+		result[parameter_many] = strdup(seperated_string);
+		printf("%s\n",result[parameter_many]);
 	}
-	
-	return parse_result;
 }
 
 /**
@@ -498,13 +495,16 @@ char** parse_command(int line_index)
  */
 void oneline_process_run(int line_index)
 {
-	char* process_name = 0; //exec함수에 쓰일 process_name입니다.
-	char* delimiter = " ";
+	char* seperated_string[20] = {0};
 	int child_return = 0; //자식 프로세스가 종료 후 반환한 값에 대한 내용입니다.
 
 	char* copied_string = strdup(parse_str_array[line_index]->command);
 	
-	process_name = strsep(&copied_string,delimiter);
+	parse_command(seperated_string,copied_string);
+	if (copied_string != NULL && strcmp(copied_string,"") == 0)
+	{
+		free(copied_string);
+	}
 	
 	process_running* new_proc = calloc(1,sizeof(process_running)); //새로운 프로세스의 관리를 위한 구조체를 만듭니다.
 	new_proc->program_id = strdup(parse_str_array[line_index]->id); //기본적으로는 모든 프로세스에게 프로그램 아이디가 존재합니다. 이를 전달합니다.
@@ -527,11 +527,10 @@ void oneline_process_run(int line_index)
 			{
 				printf("프로세스 %s는 파이프로 프로세스 %s와 연결됩니다.\n",parse_str_array[line_index]->id,parse_str_array[line_index]->pipe_id);
 				connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
-				//execv();
 			}
-			exit(1);
+			execv(seperated_string[0],seperated_string);
 		}
-			waitpid(new_proc->process_id,&child_return,0); //이제 해당 프로그램이 실행이 끝날때까지 기다립니다. 그것이 action wait입니다.
+		waitpid(new_proc->process_id,&child_return,0); //이제 해당 프로그램이 실행이 끝날때까지 기다립니다. 그것이 action wait입니다.
 	}
 	else if (strcmp(parse_str_array[line_index]->action,ACTION_RESPAWN) == 0)
 	{
