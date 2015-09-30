@@ -609,7 +609,10 @@ void oneline_process_run(int line_index)
 	 for (proc_array_index = 0; proc_array_index < line_many; proc_array_index++)
 	 {
 		 if (proc_array[proc_array_index] != NULL)
+		 {
+			//printf("%d번 줄의 프로세스 %s가 아직 존재합니다...?",proc_array_index, parse_str_array[proc_array_index]->id);
 			return 1;
+		}
 	 }
 	 return 0;
  }
