@@ -354,7 +354,6 @@ int parse_config_string(int line_index)
 			free(parsed_struct->id);
 			free(parsed_struct);
 			printf("pipe not allowed for 'respawn' tasks in line %d, ignored\n",line_index + 1);
-			return 1;
 		}
 		else
 		{
@@ -486,7 +485,6 @@ void parse_command(char* result[20], char* str)
 	for(parameter_many=0;(seperated_string = strsep(&copied_string, delimiter)) != NULL;parameter_many++)
 	{
 		result[parameter_many] = strdup(seperated_string);
-		printf("%s\n",result[parameter_many]);
 	}
 }
 
@@ -501,6 +499,7 @@ void oneline_process_run(int line_index)
 	char* copied_string = strdup(parse_str_array[line_index]->command);
 	
 	parse_command(seperated_string,copied_string);
+	printf("program_id=%s\n",parse_str_array[line_index]->id);
 	if (copied_string != NULL && strcmp(copied_string,"") == 0)
 	{
 		free(copied_string);
@@ -512,9 +511,23 @@ void oneline_process_run(int line_index)
 
 	if (strcmp(parse_str_array[line_index]->action,ACTION_ONCE) == 0)
 	{
-		return;
 		strcpy(new_proc->action,ACTION_ONCE);
 		new_proc->process_id = fork();
+		if (new_proc->process_id == 0)
+		{
+			//여기서 부터는 자식 프로세스의 영역입니다. 여기에서 exec를 작동시켜야합니다. 물론 그이전에 파이프 연결과 시그널 핸들러 등록도 이루어져야 합니다.
+			if (strcmp(parse_str_array[line_index]->pipe_id,"") != 0) //파이프에 연결을 해야하는지 검사합니다.
+			{
+				printf("프로세스 %s는 파이프로 프로세스 %s와 연결됩니다.\n",parse_str_array[line_index]->id,parse_str_array[line_index]->pipe_id);
+				connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
+			}
+			if(execv(seperated_string[0],seperated_string) == -1)
+			{
+				printf("failed to execute command‘%s’\n",parse_str_array[line_index]->command);
+				exit(1);
+			}
+		}
+		waitpid(new_proc->process_id,&child_return,0); //이제 해당 프로그램이 실행이 끝날때까지 기다립니다. 그것이 action wait입니다.
 	}
 	else if (strcmp(parse_str_array[line_index]->action,ACTION_WAIT) == 0)
 	{
@@ -528,13 +541,16 @@ void oneline_process_run(int line_index)
 				printf("프로세스 %s는 파이프로 프로세스 %s와 연결됩니다.\n",parse_str_array[line_index]->id,parse_str_array[line_index]->pipe_id);
 				connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
 			}
-			execv(seperated_string[0],seperated_string);
+			if(execv(seperated_string[0],seperated_string) == -1)
+			{
+				printf("failed to execute command‘%s’\n",parse_str_array[line_index]->command);
+				exit(1);
+			}
 		}
 		waitpid(new_proc->process_id,&child_return,0); //이제 해당 프로그램이 실행이 끝날때까지 기다립니다. 그것이 action wait입니다.
 	}
 	else if (strcmp(parse_str_array[line_index]->action,ACTION_RESPAWN) == 0)
 	{
-		return;
 		strcpy(new_proc->action,ACTION_RESPAWN);
 		new_proc->process_id = fork();
 		if (new_proc->process_id == 0)
@@ -544,6 +560,7 @@ void oneline_process_run(int line_index)
 			{
 				connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
 			}
+			exit(1);
 		}
 	}
 }
@@ -565,7 +582,8 @@ void process_run()
 			continue;
 		else
 		{
-			oneline_process_run(line_index);
+			printf("line_index = %d ",line_index);
+				oneline_process_run(line_index);
 		}
 	}
 	
