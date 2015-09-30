@@ -64,7 +64,7 @@ typedef struct process_running
 	int process_id;
 	char * program_id;
 	
-	char *action;
+	char action[10];
 	
 }process_running;
 

@@ -500,6 +500,8 @@ void process_run()
 {
 	int line_index = 0; //현재 실행시킬 프로그램의 줄번호가 배열의 인덱스입니다.
 	char ** seperated_command = NULL;
+	
+	int child_return = 0; //자식 프로세스가 종료 후 반환한 값에 대한 내용입니다.
 
 	proc_array = calloc(line_many,sizeof(process_running *));
 
@@ -513,12 +515,13 @@ void process_run()
 			//커맨드 부분의 파싱이 필요합니다. 파싱에 쓰일 구분자(delimeter)는 ' '(스페이스 바) 뿐입니다. 훨씬 쉽겠네요 :-)
 			seperated_command = parse_command(line_index);
 
-			process_running new_proc = calloc(1,sizeof(process_running)); //새로운 프로세스의 관리를 위한 구조체를 만듭니다.
+			process_running* new_proc = calloc(1,sizeof(process_running)); //새로운 프로세스의 관리를 위한 구조체를 만듭니다.
 			new_proc->program_id = strdup(parse_str_array[line_index]->id); //기본적으로는 모든 프로세스에게 프로그램 아이디가 존재합니다. 이를 전달합니다.
 
 
 			if (strcmp(parse_str_array[line_index]->action,ACTION_ONCE) == 0)
 			{
+				continue;
 				strcpy(new_proc->action,ACTION_ONCE);
 				new_proc->process_id = fork();
 			}
@@ -531,15 +534,18 @@ void process_run()
 					//여기서 부터는 자식 프로세스의 영역입니다. 여기에서 exec를 작동시켜야합니다. 물론 그이전에 파이프 연결과 시그널 핸들러 등록도 이루어져야 합니다.
 					if (strcmp(parse_str_array[line_index]->pipe_id,"") != 0) //파이프에 연결을 해야하는지 검사합니다.
 					{
+						printf("프로세스 %s는 파이프로 프로세스 %s와 연결됩니다.\n",parse_str_array[line_index]->id,parse_str_array[line_index]->pipe_id);
 						connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
 					}
+					exit(1);
 				}
 
-				waitpid(new_proc->process_id,0); //이제 해당 프로그램이 실행이 끝날때까지 기다립니다. 그것이 action wait입니다.
+				waitpid(new_proc->process_id,&child_return,0); //이제 해당 프로그램이 실행이 끝날때까지 기다립니다. 그것이 action wait입니다.
 
 			}
 			else if (strcmp(parse_str_array[line_index]->action,ACTION_RESPAWN) == 0)
 			{
+				continue;
 				strcpy(new_proc->action,ACTION_RESPAWN);
 				new_proc->process_id = fork();
 				if (new_proc->process_id == 0)
