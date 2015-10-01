@@ -380,6 +380,7 @@ int parse_config_string(int line_index)
 			pipe_id_array[pipe_many++] = strdup(parsed_struct->pipe_id);
 		}
 		parsed_struct->command = strdup(seperated_string);
+		parse_command(parsed_struct->parsed_command, parsed_struct->command);
 		parse_str_array[line_index] = parsed_struct;
 	}
 	
@@ -521,12 +522,8 @@ void parse_command(char* result[20], char* str)
  */
 void oneline_process_run(int line_index)
 {
-	char* seperated_string[20] = {0};
 	int child_return = 0; //자식 프로세스가 종료 후 반환한 값에 대한 내용입니다.
 
-	char* copied_string = strdup(parse_str_array[line_index]->command);
-	
-	parse_command(seperated_string,copied_string);
 	printf("program_id=%s\n",parse_str_array[line_index]->id);
 	if (copied_string != NULL && strcmp(copied_string,"") == 0)
 	{
@@ -549,7 +546,7 @@ void oneline_process_run(int line_index)
 				printf("프로세스 %s는 파이프로 프로세스 %s와 연결됩니다.\n",parse_str_array[line_index]->id,parse_str_array[line_index]->pipe_id);
 				connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
 			}
-			if(execv(seperated_string[0],seperated_string) == -1)
+			if(execv(parse_str_array[line_index]->parsed_command[0],parse_str_array[line_index]->parsed_command) == -1)
 			{
 				printf("failed to execute command‘%s’\n",parse_str_array[line_index]->command);
 				exit(EXIT_FAILURE);
@@ -572,7 +569,7 @@ void oneline_process_run(int line_index)
 				printf("프로세스 %s는 파이프로 프로세스 %s와 연결됩니다.\n",parse_str_array[line_index]->id,parse_str_array[line_index]->pipe_id);
 				connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
 			}
-			if(execv(seperated_string[0],seperated_string) == -1)
+			if(execv(parse_str_array[line_index]->parsed_command[0],parse_str_array[line_index]->parsed_command) == -1)
 			{
 				printf("failed to execute command‘%s’\n",parse_str_array[line_index]->command);
 				exit(EXIT_FAILURE);

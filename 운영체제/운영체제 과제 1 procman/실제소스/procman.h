@@ -45,6 +45,7 @@ typedef struct parsed_string
 	char action[10];
 	char* pipe_id;
 	char* command;
+	char* parsed_command[20];
 
 } parsed_string;
 
