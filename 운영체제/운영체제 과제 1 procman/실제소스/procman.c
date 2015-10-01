@@ -428,9 +428,9 @@ void sigchld_handler_parents(int signo)
 	int status;
 	int pid;
 	
+	sleep(1);
 	while((pid =waitpid(-1, &status, WNOHANG)) > 0) //자식프로세스가 서로 매우 비슷한 시간에 종료되면 SIGCHLD가 중첩되어서 몇몇 프로세스의 pid를 얻지 못하는 경우도 있습니다. 이를 방지하기위해 반복문으로 검사합니다.
 	{
-
 		//먼저 끝난 프로세스가 몇번째 줄의 프로그램인지 검사합니다. 이를 알아낸 후에 proc_array에서 해당 라인 인덱스의 동적 메모리를 제거하고 null로 만듭니다.
 		int proc_array_index;
 		for(proc_array_index = 0; proc_array_index < line_many; proc_array_index++)
@@ -443,12 +443,15 @@ void sigchld_handler_parents(int signo)
 		
 		printf("종료된 프로세스 이름=%s\n",parse_str_array[proc_array_index]->id);
 		
+		//만약 action이 RESPAWN이라면 잠시 쉬고 다시 한번 실행시킵니다. 따라서, 이 경우에는 proc_array에서 해당 프로그램을 지우지 않습니다.
 		if (strcmp(parse_str_array[proc_array_index]->action, ACTION_RESPAWN) == 0)
 		{
 			oneline_process_run(proc_array_index);
 		}
-		
-		proc_array[proc_array_index] = NULL;
+		else
+		{
+			proc_array[proc_array_index] = NULL;
+		}
 	}
 }
 
@@ -525,10 +528,6 @@ void oneline_process_run(int line_index)
 	int child_return = 0; //자식 프로세스가 종료 후 반환한 값에 대한 내용입니다.
 
 	printf("program_id=%s\n",parse_str_array[line_index]->id);
-	if (copied_string != NULL && strcmp(copied_string,"") == 0)
-	{
-		free(copied_string);
-	}
 	
 	process_running* new_proc = calloc(1,sizeof(process_running)); //새로운 프로세스의 관리를 위한 구조체를 만듭니다.
 	new_proc->program_id = strdup(parse_str_array[line_index]->id); //기본적으로는 모든 프로세스에게 프로그램 아이디가 존재합니다. 이를 전달합니다.
@@ -537,6 +536,7 @@ void oneline_process_run(int line_index)
 	if (strcmp(parse_str_array[line_index]->action,ACTION_ONCE) == 0)
 	{
 		strcpy(new_proc->action,ACTION_ONCE);
+		usleep(10000);
 		new_proc->process_id = fork();
 		if (new_proc->process_id == 0)
 		{
@@ -560,6 +560,7 @@ void oneline_process_run(int line_index)
 	else if (strcmp(parse_str_array[line_index]->action,ACTION_WAIT) == 0)
 	{
 		strcpy(new_proc->action,ACTION_WAIT);
+		usleep(10000);
 		new_proc->process_id = fork();
 		if (new_proc->process_id == 0)
 		{
@@ -577,22 +578,31 @@ void oneline_process_run(int line_index)
 		}
 		else
 		{
-			waitpid(new_proc->process_id,&child_return,0); //이제 해당 프로그램이 실행이 끝날때까지 기다립니다. 그것이 action wait입니다.
+			waitpid(new_proc->process_id,&child_return,0);
 		}
 	}
 	else if (strcmp(parse_str_array[line_index]->action,ACTION_RESPAWN) == 0)
 	{
-		return;
 		strcpy(new_proc->action,ACTION_RESPAWN);
+		usleep(10000);
 		new_proc->process_id = fork();
 		if (new_proc->process_id == 0)
 		{
 			//여기서 부터는 자식 프로세스의 영역입니다. 여기에서 exec를 작동시켜야합니다. 물론 그이전에 파이프 연결과 시그널 핸들러 등록도 이루어져야 합니다.
 			if (strcmp(parse_str_array[line_index]->pipe_id,"") != 0) //파이프에 연결을 해야하는지 검사합니다.
 			{
+				printf("프로세스 %s는 파이프로 프로세스 %s와 연결됩니다.\n",parse_str_array[line_index]->id,parse_str_array[line_index]->pipe_id);
 				connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
 			}
-			exit(EXIT_FAILURE);
+			if(execv(parse_str_array[line_index]->parsed_command[0],parse_str_array[line_index]->parsed_command) == -1)
+			{
+				printf("failed to execute command‘%s’\n",parse_str_array[line_index]->command);
+				exit(EXIT_FAILURE);
+			}
+		}
+		else
+		{
+			proc_array[line_index] = new_proc;
 		}
 	}
 }
@@ -631,8 +641,8 @@ void process_run()
 			continue;
 		else
 		{
+			sleep(3);
 			oneline_process_run(line_index);
-			usleep(10000);
 		}
 	}
 	
@@ -678,7 +688,8 @@ int main (int argc, char **argv)
 	//일단 config파일에서 지정한 프로그램들은 전부 실행 시켰습니다. 이렇게 실행한 프로그램들이 전부 종료될때까지 부모 프로세스는 종료되면 안됩니다.
 	while (process_exist())
 	{
-		
+		printf("현재 실행중인 프로세스가 있습니다.\n");
+		sleep(2);
 	}
 	return 0;
 }
