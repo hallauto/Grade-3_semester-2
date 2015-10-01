@@ -88,7 +88,7 @@ void process_run();
 void read_config_file();
 void read_new_line_letter();
 void remove_string_space(char* string);
-void sigchld_handler_parents(int signo);
+void sigchld_handler_parents();
 void sigint_handler_parents(int signo);
 void signal_regist_parents();
 void sigterm_handler_parents(int signo);

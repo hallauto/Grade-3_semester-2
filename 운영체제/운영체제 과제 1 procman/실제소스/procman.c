@@ -423,12 +423,11 @@ void connect_pipe()
  * 부모 프로세스의 SIGCHLD 핸들러입니다. 자식 프로세스가 종료되면 SIGCHLD가 전달되고, 이 때에 waitpid함수로 자식 프로세스의 종료를 확인합니다. 만약 프로세스가 respawn이라면 다시 시작 시킵니다.
  * int signo: 전달된 시그널의 번호입니다.
  */
-void sigchld_handler_parents(int signo)
+void sigchld_handler_parents()
 {
 	int status;
 	int pid;
 	
-	sleep(1);
 	while((pid =waitpid(-1, &status, WNOHANG)) > 0) //자식프로세스가 서로 매우 비슷한 시간에 종료되면 SIGCHLD가 중첩되어서 몇몇 프로세스의 pid를 얻지 못하는 경우도 있습니다. 이를 방지하기위해 반복문으로 검사합니다.
 	{
 		//먼저 끝난 프로세스가 몇번째 줄의 프로그램인지 검사합니다. 이를 알아낸 후에 proc_array에서 해당 라인 인덱스의 동적 메모리를 제거하고 null로 만듭니다.
@@ -463,7 +462,21 @@ void sigchld_handler_parents(int signo)
  */
 void sigint_handler_parents(int signo)
 {
-	
+	int proc_array_index;
+	for(proc_array_index = 0; proc_array_index < line_many; proc_array_index++)
+	{
+		if (proc_array[proc_array_index] == NULL) //현재 실행되고있지 않은 줄 번호와 같은 인덱스는 전부 NULL로 지정했습니다.
+			continue;
+		else
+		{
+			kill(proc_array[proc_array_index]->process_id,SIGINT);
+		}
+		if (!process_exist())
+		{
+			printf("Terminated by SIGNAL(2)");
+			exit(1);
+		}
+	}
 }
 
 /**
@@ -473,7 +486,23 @@ void sigint_handler_parents(int signo)
  */
 void sigterm_handler_parents(int signo)
 {
-
+	int proc_array_index;
+	//kill(0,SIGINT);
+	for(proc_array_index = 0; proc_array_index < line_many; proc_array_index++)
+	{
+		if (!process_exist())
+		{
+			printf("Terminated by SIGNAL(15)");
+			exit(1);
+		}
+		if (proc_array[proc_array_index] == NULL) //현재 실행되고있지 않은 줄 번호와 같은 인덱스는 전부 NULL로 지정했습니다.
+			continue;
+		else
+		{
+			if (kill(proc_array[proc_array_index]->process_id,SIGINT)==0)
+				proc_array[proc_array_index] = NULL;
+		}
+	}
 }
 /**
  * 부모 프로세스에서 시그널의 기본동작 대신 지정된 동작을 하도록 시그널 핸들러를 등록합니다.
@@ -481,12 +510,28 @@ void sigterm_handler_parents(int signo)
 void signal_regist_parents()
 {
 	struct sigaction sigchld_struct; //SIGCHLD 시그널을 처리할 핸들러를 등록하는데 이용할 구조체입니다.
+	struct sigaction sigint_struct; //SIGINT 시그널을 처리할 핸들러를 등록하는데 이용할 구조체입니다.
+	struct sigaction sigterm_struct; //SIGTERM 시그널을 처리할 핸들러를 등록하는데 이용할 구조체입니다.
 	struct sigaction old_sig_handle; //이전 동작을 지정하는 핸들러인데, 디버깅용이지 특별한 의미를 가지지 않습니다.
 	
-	sigemptyset(&sigchld_struct.sa_mask); //SIGCHLD를 처리하는데에 블록해야할 시그널은 없습니다.
+	sigemptyset( & (sigchld_struct.sa_mask) );
+	sigaddset( & (sigchld_struct.sa_mask), SIGQUIT );
+	sigaddset( & (sigchld_struct.sa_mask), SIGCHLD );
 	sigchld_struct.sa_handler = sigchld_handler_parents; //SIGCHLD를 처리할 핸들러 함수를 구조체에 저장합니다.
 	
 	sigaction(SIGCHLD,&sigchld_struct,&old_sig_handle);
+	
+	//위와 같이 SIGINT, SITTERM을 처리할 핸들러 함수들을 등록합니다.
+	sigemptyset(&sigint_struct.sa_mask);
+	sigint_struct.sa_handler = sigint_handler_parents;
+	
+	sigaction(SIGINT,&sigint_struct,&old_sig_handle);
+	
+	sigemptyset(&sigterm_struct.sa_mask);
+	sigterm_struct.sa_handler = sigterm_handler_parents;
+	
+	sigaction(SIGTERM,&sigterm_struct,&old_sig_handle);
+	
 }
 
 /**
@@ -641,7 +686,7 @@ void process_run()
 			continue;
 		else
 		{
-			sleep(3);
+			usleep(100000);
 			oneline_process_run(line_index);
 		}
 	}
@@ -672,6 +717,8 @@ void read_new_line_letter()
 
 int main (int argc, char **argv)
 {
+	signal_regist_parents();
+	usleep(10000);
 	if (argc <= 1)
 	{
 		fprintf (stderr, "usage: %s config-file\n", argv[0]);
@@ -681,14 +728,12 @@ int main (int argc, char **argv)
 	else
 	{
 		file_open(argv);
-		signal_regist_parents();
 		process_run();
 	}
 	
 	//일단 config파일에서 지정한 프로그램들은 전부 실행 시켰습니다. 이렇게 실행한 프로그램들이 전부 종료될때까지 부모 프로세스는 종료되면 안됩니다.
 	while (process_exist())
 	{
-		printf("현재 실행중인 프로세스가 있습니다.\n");
 		sleep(2);
 	}
 	return 0;
