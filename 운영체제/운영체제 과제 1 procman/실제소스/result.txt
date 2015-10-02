@@ -24,3 +24,13 @@ failed to execute command‘./TTT’
 'Task5' start (timeout 1)
 'Task6' start (timeout 2)
 'Task5' end
+'Task6' end
+'Task4' end
+'Task4' start (timeout 4)
+'Task4' end
+'Task4' start (timeout 4)
+'Task4' end
+'Task4' start (timeout 4)
+Terminated by SIGNAL(15)
+'Task4' terminated by SIGNAL(15)
+'Task4' end

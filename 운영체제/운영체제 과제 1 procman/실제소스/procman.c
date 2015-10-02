@@ -575,7 +575,7 @@ void sigterm_handler_parents(int signo)
 			continue;
 		else
 		{
-			kill(proc_array[proc_array_index]->process_id,SIGINT);
+			kill(proc_array[proc_array_index]->process_id,SIGTERM);
 			proc_array[proc_array_index] = NULL;
 		}
 	}
