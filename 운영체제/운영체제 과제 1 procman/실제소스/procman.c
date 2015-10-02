@@ -211,9 +211,9 @@ void file_open(char **argv)
   * char * string: 검사할 문자열입니다.
   * return: int 오류 코드
   * 0: 오류 없음
-  * 1: 아이디의 형식이 잘못되었습니다.
-  * 2: 존재하지 않는 아이디입니다.
-  * 3: 이미 다른 프로세스와 파이프로 연결되어 있는 아이디입니다.
+  * -1: 아이디의 형식이 잘못되었습니다.
+  * -2: 존재하지 않는 아이디입니다.
+  * -3: 이미 다른 프로세스와 파이프로 연결되어 있는 아이디입니다.
   */
  int check_pipe_id(char* string)
  {
@@ -236,7 +236,7 @@ void file_open(char **argv)
 	 }
 	 else if(string_length < 2 || string_length > 8)
 	 {
-		 return 1;
+		 return -1;
 	 }
 	 	
 	//이제 문자열이 형식에 맞는지 검사합니다.
@@ -245,7 +245,7 @@ void file_open(char **argv)
 		if (string[string_index]< arscii_a || string[string_index] > arscii_z)
 		{
 			if (string[string_index] < arscii_0 || string[string_index] > arscii_9)
-				return 1;
+				return -1;
 		}
 	}
 	
@@ -255,7 +255,7 @@ void file_open(char **argv)
 	{
 		if (strcmp(string,pipe_id_array[pipe_array_index]) == 0)
 		{
-			return 3;
+			return -3;
 		}
 	}
 	
@@ -267,10 +267,10 @@ void file_open(char **argv)
 			continue;
 		else if(strcmp(parse_str_array[array_index]->id,string)==0) //이제 id값이 같은 구조체가 존재하는지 검사합니다.
 		{
-			return 0;
+			return array_index;
 		}
 	}
-	return 2; //해당하는 아이디를 가진 프로세스는 없습니다.
+	return -2; //해당하는 아이디를 가진 프로세스는 없습니다.
  }
  
 /**
@@ -347,19 +347,19 @@ int parse_config_string(int line_index)
 	}
 	
 	seperated_string = strsep(&copied_string, delimiter);
-	if((check_result = check_pipe_id(seperated_string)))
+	if((check_result = check_pipe_id(seperated_string)) < 0)
 	{
 		free(parsed_struct->id);
 		free(parsed_struct);
-		if (check_result == 1 && strcmp(seperated_string,""))
+		if (check_result == -1 && strcmp(seperated_string,""))
 		{
 			fprintf(stderr,"invalid pipe-id ‘%s’ in line %d, ignored\n", seperated_string, line_index + 1);
 		}
-		else if (check_result == 2)
+		else if (check_result == -2)
 		{
 			fprintf(stderr,"unknown pipe-id ‘%s’ in line %d, ignored\n",seperated_string, line_index + 1);
 		}
-		else if (check_result == 3)
+		else if (check_result == -3)
 		{
 			fprintf(stderr,"pipe not allowed for already piped tasks in line %d, ignored\n", line_index + 1);
 		}
@@ -376,6 +376,27 @@ int parse_config_string(int line_index)
 		}
 		else
 		{
+			
+			
+			int pipe_one_array[2] = {0};
+			int pipe_two_array[2] = {0};
+				
+			if (-1 == pipe(pipe_one_array))
+			{
+				return 1;
+			}
+			if (-1 == pipe(pipe_two_array))
+			{
+				return 1;
+			}
+			
+			//이제 각각의 입출력에 맞춰 파이프 입출력 디스크립터를 전달합니다.
+			parse_str_array[check_result]->pipe_discripter[0] = pipe_one_array[0];
+			parse_str_array[check_result]->pipe_discripter[1] = pipe_two_array[1];
+			parsed_struct->pipe_discripter[0] = pipe_two_array[0];
+			parsed_struct->pipe_discripter[1] = pipe_one_array[1];
+			
+			parsed_struct->pipe_id_line_index = check_result;
 			parsed_struct->pipe_id = strdup(seperated_string);
 		}
 	}
@@ -433,15 +454,18 @@ void read_config_file()
 	return;
 }
 
-void connect_pipe()
+void connect_pipe(int line_index)
 {
-	
+	close(fileno(stdin));
+	dup2(parse_str_array[line_index]->pipe_discripter[0],0);
+	close(fileno(stdout));
+	dup2(parse_str_array[line_index]->pipe_discripter[1],1);
 }
 
 /**
  * 혹시라도 시그널이 핸들링되지 않는 경우를 대비해서 이 함수로 다시 한번 자식 프로세스를 검사해봅니다.
  */
-void check_zombie()
+int check_zombie()
 {
 	int status;
 	int pid;
@@ -466,8 +490,10 @@ void check_zombie()
 		else
 		{
 			proc_array[proc_array_index] = NULL;
+			return 1;
 		}
 	}
+	return 0;
 }
 
 /**
@@ -514,17 +540,17 @@ void sigint_handler_parents(int signo)
 	int proc_array_index;
 	for(proc_array_index = 0; proc_array_index < line_many; proc_array_index++)
 	{
-		if (proc_array[proc_array_index] == NULL) //현재 실행되고있지 않은 줄 번호와 같은 인덱스는 전부 NULL로 지정했습니다.
-			continue;
-		else
-		{
-			if (kill(proc_array[proc_array_index]->process_id,SIGINT)==0)
-				proc_array[proc_array_index] = NULL;
-		}
 		if (!process_exist())
 		{
 			fprintf(stderr,"Terminated by SIGNAL(2)\n");
 			exit(1);
+		}
+		if (proc_array[proc_array_index] == NULL) //현재 실행되고있지 않은 줄 번호와 같은 인덱스는 전부 NULL로 지정했습니다.
+			continue;
+		else
+		{
+			kill(proc_array[proc_array_index]->process_id,SIGINT);
+			proc_array[proc_array_index] = NULL;
 		}
 	}
 }
@@ -549,8 +575,8 @@ void sigterm_handler_parents(int signo)
 			continue;
 		else
 		{
-			if (kill(proc_array[proc_array_index]->process_id,SIGINT)==0)
-				proc_array[proc_array_index] = NULL;
+			kill(proc_array[proc_array_index]->process_id,SIGINT);
+			proc_array[proc_array_index] = NULL;
 		}
 	}
 }
@@ -636,9 +662,9 @@ void oneline_process_run(int line_index)
 		if (new_proc->process_id == 0)
 		{
 			//여기서 부터는 자식 프로세스의 영역입니다. 여기에서 exec를 작동시켜야합니다. 물론 그이전에 파이프 연결과 시그널 핸들러 등록도 이루어져야 합니다.
-			if (strcmp(parse_str_array[line_index]->pipe_id,"") != 0) //파이프에 연결을 해야하는지 검사합니다.
+			if (parse_str_array[line_index]->pipe_discripter[0] != 0) //파이프에 연결을 해야하는지 검사합니다.
 			{
-				connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
+				connect_pipe(line_index); //파이프에 연결합니다.
 			}
 			set_stderr();
 			if(execv(parse_str_array[line_index]->parsed_command[0],parse_str_array[line_index]->parsed_command) == -1)
@@ -660,10 +686,9 @@ void oneline_process_run(int line_index)
 		if (new_proc->process_id == 0)
 		{
 			//여기서 부터는 자식 프로세스의 영역입니다. 여기에서 exec를 작동시켜야합니다. 물론 그이전에 파이프 연결과 시그널 핸들러 등록도 이루어져야 합니다.
-			if (strcmp(parse_str_array[line_index]->pipe_id,"") != 0) //파이프에 연결을 해야하는지 검사합니다.
+			if (parse_str_array[line_index]->pipe_discripter[0] != 0) //파이프에 연결을 해야하는지 검사합니다.
 			{
-				printf("프로세스 %s는 파이프로 프로세스 %s와 연결됩니다.\n",parse_str_array[line_index]->id,parse_str_array[line_index]->pipe_id);
-				connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
+				connect_pipe(line_index); //파이프에 연결합니다.
 			}
 			set_stderr();
 			if(execv(parse_str_array[line_index]->parsed_command[0],parse_str_array[line_index]->parsed_command) == -1)
@@ -675,6 +700,7 @@ void oneline_process_run(int line_index)
 		else
 		{
 			waitpid(new_proc->process_id,&child_return,0);
+			check_zombie();
 		}
 	}
 	else if (strcmp(parse_str_array[line_index]->action,ACTION_RESPAWN) == 0)
@@ -685,10 +711,9 @@ void oneline_process_run(int line_index)
 		if (new_proc->process_id == 0)
 		{
 			//여기서 부터는 자식 프로세스의 영역입니다. 여기에서 exec를 작동시켜야합니다. 물론 그이전에 파이프 연결과 시그널 핸들러 등록도 이루어져야 합니다.
-			if (strcmp(parse_str_array[line_index]->pipe_id,"") != 0) //파이프에 연결을 해야하는지 검사합니다.
+			if (parse_str_array[line_index]->pipe_discripter[0] != 0) //파이프에 연결을 해야하는지 검사합니다.
 			{
-				printf("프로세스 %s는 파이프로 프로세스 %s와 연결됩니다.\n",parse_str_array[line_index]->id,parse_str_array[line_index]->pipe_id);
-				connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
+				connect_pipe(line_index); //파이프에 연결합니다.
 			}
 			set_stderr();
 			if(execv(parse_str_array[line_index]->parsed_command[0],parse_str_array[line_index]->parsed_command) == -1)
@@ -737,7 +762,7 @@ void process_run()
 			continue;
 		else
 		{
-			usleep(100000);
+			usleep(200000);
 			oneline_process_run(line_index);
 		}
 	}

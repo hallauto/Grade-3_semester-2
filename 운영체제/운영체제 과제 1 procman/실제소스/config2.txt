@@ -1,3 +1,0 @@
-notcmd:once::./TTT
-id1:once::./task -n Task1 -w Hi -r -t 1
-id2:wait:id1:./task -n Task2 -w Hello -r -t 1

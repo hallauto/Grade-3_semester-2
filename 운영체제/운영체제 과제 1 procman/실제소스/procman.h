@@ -46,6 +46,8 @@ typedef struct parsed_string
 	char* id;
 	char action[10];
 	char* pipe_id;
+	int pipe_id_line_index;
+	int pipe_discripter[2]; //주어진 파이프 디스크립터입니다. 0이 입력, 1이 출력입니다.
 	char* command;
 	char* parsed_command[20];
 
@@ -80,7 +82,8 @@ process_running ** proc_array; //실행 중인 프로세스에 관한 정보가 
 int check_action(char* string);
 int check_id(char * string);
 int check_pipe_id(char* string);
-void check_zombie();
+int check_zombie();
+void connect_pipe(int line_index);
 void file_open(char **argv);
 int letter_cnt(char * string, char letter);
 void oneline_process_run(int line_index);
