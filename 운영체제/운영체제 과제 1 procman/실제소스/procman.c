@@ -13,6 +13,25 @@
 
 #include "procman.h"
 
+/**
+ * stderr을 파일 출력으로 설정하는 함수입니다.
+ */
+void set_stderr()
+{
+	if (stderr_file == NULL)
+	{
+		fprintf(stderr,"failed to open stderr_file\n");
+		return;
+	}
+	
+	//이제 stderr을 지정한 파일 디스크립터로 바꿉니다.
+	close(fileno(stderr));
+	dup2(fileno(stderr_file),2);
+}
+
+/**
+ * 주어진 argv를 이용해서 config파일을 오픈하는 함수입니다.
+ */
 void file_open(char **argv)
 {
 	char* file_name;
@@ -285,7 +304,7 @@ int parse_config_string(int line_index)
 	if (letter_cnt(input_string_array[line_index],*delimiter) != 3)
 	{
 		free(parsed_struct);
-		printf("invalid format in line %d, ignored\n",line_index + 1);
+		fprintf(stderr,"invalid format in line %d, ignored\n",line_index + 1);
 		return 1; //오류가 있습니다. 다른 문제가 있는지 검사해야합니다.
 	}
 	
@@ -297,11 +316,11 @@ int parse_config_string(int line_index)
 		free(parsed_struct);
 		if (check_result == 1)
 		{
-			printf("invalid id ‘%s’ in line %d, ignored\n", seperated_string, line_index + 1);
+			fprintf(stderr,"invalid id ‘%s’ in line %d, ignored\n", seperated_string, line_index + 1);
 		}
 		else if (check_result == 2)
 		{
-			printf("duplicate id ‘%s’ in line %d, ignored\n", seperated_string, line_index + 1);
+			fprintf(stderr,"duplicate id ‘%s’ in line %d, ignored\n", seperated_string, line_index + 1);
 		}
 		return 1;
 	}
@@ -318,7 +337,7 @@ int parse_config_string(int line_index)
 		free(parsed_struct);
 		if (check_result == 1)
 		{
-			printf("invalid action ‘%s’ in line %d, ignored\n",seperated_string,line_index + 1);
+			fprintf(stderr,"invalid action ‘%s’ in line %d, ignored\n",seperated_string,line_index + 1);
 		}
 		return 1;
 	}
@@ -334,15 +353,15 @@ int parse_config_string(int line_index)
 		free(parsed_struct);
 		if (check_result == 1 && strcmp(seperated_string,""))
 		{
-			printf("invalid pipe-id ‘%s’ in line %d, ignored\n", seperated_string, line_index + 1);
+			fprintf(stderr,"invalid pipe-id ‘%s’ in line %d, ignored\n", seperated_string, line_index + 1);
 		}
 		else if (check_result == 2)
 		{
-			printf("unknown pipe-id ‘%s’ in line %d, ignored\n",seperated_string, line_index + 1);
+			fprintf(stderr,"unknown pipe-id ‘%s’ in line %d, ignored\n",seperated_string, line_index + 1);
 		}
 		else if (check_result == 3)
 		{
-			printf("pipe not allowed for already piped tasks in line %d, ignored\n", line_index + 1);
+			fprintf(stderr,"pipe not allowed for already piped tasks in line %d, ignored\n", line_index + 1);
 		}
 		
 		return 1;
@@ -353,7 +372,7 @@ int parse_config_string(int line_index)
 		{
 			free(parsed_struct->id);
 			free(parsed_struct);
-			printf("pipe not allowed for 'respawn' tasks in line %d, ignored\n",line_index + 1);
+			fprintf(stderr,"pipe not allowed for 'respawn' tasks in line %d, ignored\n",line_index + 1);
 		}
 		else
 		{
@@ -369,7 +388,7 @@ int parse_config_string(int line_index)
 	remove_string_space(seperated_string);
 	if (strcmp(seperated_string,"") == 0) //커맨드 부분이 공백인지 확인합니다. 만약 공백이라면 오류 메시지를 전송합니다. 만약 파이프 연결이 등록되어 있었다면 이 사항도 취소합니다.
 	{
-		printf("empty command in line %d, ignored\n", line_index + 1);
+		fprintf(stderr,"empty command in line %d, ignored\n", line_index + 1);
 		return 1;
 	}
 	else //이 줄은 정상적으로 작성되었습니다. 이제 파이프로 연결되었다는 사항과 기타 내용을 등록합니다.
@@ -420,6 +439,38 @@ void connect_pipe()
 }
 
 /**
+ * 혹시라도 시그널이 핸들링되지 않는 경우를 대비해서 이 함수로 다시 한번 자식 프로세스를 검사해봅니다.
+ */
+void check_zombie()
+{
+	int status;
+	int pid;
+	
+	if((pid =waitpid(-1, &status, WNOHANG)) > 0) //자식프로세스가 서로 매우 비슷한 시간에 종료되면 SIGCHLD가 중첩되어서 몇몇 프로세스의 pid를 얻지 못하는 경우도 있습니다. 이를 방지하기위해 반복문으로 검사합니다.
+	{
+		//먼저 끝난 프로세스가 몇번째 줄의 프로그램인지 검사합니다. 이를 알아낸 후에 proc_array에서 해당 라인 인덱스의 동적 메모리를 제거하고 null로 만듭니다.
+		int proc_array_index;
+		for(proc_array_index = 0; proc_array_index < line_many; proc_array_index++)
+		{
+			if (proc_array[proc_array_index] == NULL) //현재 실행되고있지 않은 줄 번호와 같은 인덱스는 전부 NULL로 지정했습니다.
+				continue;
+			if (proc_array[proc_array_index]->process_id == pid)
+				break;
+		}
+		
+		//만약 action이 RESPAWN이라면 잠시 쉬고 다시 한번 실행시킵니다. 따라서, 이 경우에는 proc_array에서 해당 프로그램을 지우지 않습니다.
+		if (strcmp(parse_str_array[proc_array_index]->action, ACTION_RESPAWN) == 0)
+		{
+			oneline_process_run(proc_array_index);
+		}
+		else
+		{
+			proc_array[proc_array_index] = NULL;
+		}
+	}
+}
+
+/**
  * 부모 프로세스의 SIGCHLD 핸들러입니다. 자식 프로세스가 종료되면 SIGCHLD가 전달되고, 이 때에 waitpid함수로 자식 프로세스의 종료를 확인합니다. 만약 프로세스가 respawn이라면 다시 시작 시킵니다.
  * int signo: 전달된 시그널의 번호입니다.
  */
@@ -439,8 +490,6 @@ void sigchld_handler_parents()
 			if (proc_array[proc_array_index]->process_id == pid)
 				break;
 		}
-		
-		printf("종료된 프로세스 이름=%s\n",parse_str_array[proc_array_index]->id);
 		
 		//만약 action이 RESPAWN이라면 잠시 쉬고 다시 한번 실행시킵니다. 따라서, 이 경우에는 proc_array에서 해당 프로그램을 지우지 않습니다.
 		if (strcmp(parse_str_array[proc_array_index]->action, ACTION_RESPAWN) == 0)
@@ -469,11 +518,12 @@ void sigint_handler_parents(int signo)
 			continue;
 		else
 		{
-			kill(proc_array[proc_array_index]->process_id,SIGINT);
+			if (kill(proc_array[proc_array_index]->process_id,SIGINT)==0)
+				proc_array[proc_array_index] = NULL;
 		}
 		if (!process_exist())
 		{
-			printf("Terminated by SIGNAL(2)");
+			fprintf(stderr,"Terminated by SIGNAL(2)\n");
 			exit(1);
 		}
 	}
@@ -492,7 +542,7 @@ void sigterm_handler_parents(int signo)
 	{
 		if (!process_exist())
 		{
-			printf("Terminated by SIGNAL(15)");
+			fprintf(stderr,"Terminated by SIGNAL(15)\n");
 			exit(1);
 		}
 		if (proc_array[proc_array_index] == NULL) //현재 실행되고있지 않은 줄 번호와 같은 인덱스는 전부 NULL로 지정했습니다.
@@ -515,8 +565,8 @@ void signal_regist_parents()
 	struct sigaction old_sig_handle; //이전 동작을 지정하는 핸들러인데, 디버깅용이지 특별한 의미를 가지지 않습니다.
 	
 	sigemptyset( & (sigchld_struct.sa_mask) );
-	sigaddset( & (sigchld_struct.sa_mask), SIGQUIT );
-	sigaddset( & (sigchld_struct.sa_mask), SIGCHLD );
+	sigaddset( & (sigchld_struct.sa_mask), SIGQUIT);
+	sigaddset( & (sigchld_struct.sa_mask), SIGCHLD);
 	sigchld_struct.sa_handler = sigchld_handler_parents; //SIGCHLD를 처리할 핸들러 함수를 구조체에 저장합니다.
 	
 	sigaction(SIGCHLD,&sigchld_struct,&old_sig_handle);
@@ -571,8 +621,8 @@ void parse_command(char* result[20], char* str)
 void oneline_process_run(int line_index)
 {
 	int child_return = 0; //자식 프로세스가 종료 후 반환한 값에 대한 내용입니다.
-
-	printf("program_id=%s\n",parse_str_array[line_index]->id);
+	
+	check_zombie();
 	
 	process_running* new_proc = calloc(1,sizeof(process_running)); //새로운 프로세스의 관리를 위한 구조체를 만듭니다.
 	new_proc->program_id = strdup(parse_str_array[line_index]->id); //기본적으로는 모든 프로세스에게 프로그램 아이디가 존재합니다. 이를 전달합니다.
@@ -588,12 +638,12 @@ void oneline_process_run(int line_index)
 			//여기서 부터는 자식 프로세스의 영역입니다. 여기에서 exec를 작동시켜야합니다. 물론 그이전에 파이프 연결과 시그널 핸들러 등록도 이루어져야 합니다.
 			if (strcmp(parse_str_array[line_index]->pipe_id,"") != 0) //파이프에 연결을 해야하는지 검사합니다.
 			{
-				printf("프로세스 %s는 파이프로 프로세스 %s와 연결됩니다.\n",parse_str_array[line_index]->id,parse_str_array[line_index]->pipe_id);
 				connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
 			}
+			set_stderr();
 			if(execv(parse_str_array[line_index]->parsed_command[0],parse_str_array[line_index]->parsed_command) == -1)
 			{
-				printf("failed to execute command‘%s’\n",parse_str_array[line_index]->command);
+				fprintf(stderr,"failed to execute command‘%s’\n",parse_str_array[line_index]->command);
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -615,9 +665,10 @@ void oneline_process_run(int line_index)
 				printf("프로세스 %s는 파이프로 프로세스 %s와 연결됩니다.\n",parse_str_array[line_index]->id,parse_str_array[line_index]->pipe_id);
 				connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
 			}
+			set_stderr();
 			if(execv(parse_str_array[line_index]->parsed_command[0],parse_str_array[line_index]->parsed_command) == -1)
 			{
-				printf("failed to execute command‘%s’\n",parse_str_array[line_index]->command);
+				fprintf(stderr,"failed to execute command‘%s’\n",parse_str_array[line_index]->command);
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -639,9 +690,10 @@ void oneline_process_run(int line_index)
 				printf("프로세스 %s는 파이프로 프로세스 %s와 연결됩니다.\n",parse_str_array[line_index]->id,parse_str_array[line_index]->pipe_id);
 				connect_pipe(); //파이프에 연결합니다. 이 때, 파이프를 연결할 다른 한쪽의 프로세스의 줄 인덱스도 전달해야 합니다.
 			}
+			set_stderr();
 			if(execv(parse_str_array[line_index]->parsed_command[0],parse_str_array[line_index]->parsed_command) == -1)
 			{
-				printf("failed to execute command‘%s’\n",parse_str_array[line_index]->command);
+				fprintf(stderr,"failed to execute command‘%s’\n",parse_str_array[line_index]->command);
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -662,7 +714,6 @@ void oneline_process_run(int line_index)
 	 {
 		 if (proc_array[proc_array_index] != NULL)
 		 {
-			//printf("%d번 줄의 프로세스 %s가 아직 존재합니다...?",proc_array_index, parse_str_array[proc_array_index]->id);
 			return 1;
 		}
 	 }
@@ -719,6 +770,10 @@ int main (int argc, char **argv)
 {
 	signal_regist_parents();
 	usleep(10000);
+	
+	stderr_file = fopen("result.txt","w");
+	set_stderr();
+	
 	if (argc <= 1)
 	{
 		fprintf (stderr, "usage: %s config-file\n", argv[0]);
@@ -734,6 +789,7 @@ int main (int argc, char **argv)
 	//일단 config파일에서 지정한 프로그램들은 전부 실행 시켰습니다. 이렇게 실행한 프로그램들이 전부 종료될때까지 부모 프로세스는 종료되면 안됩니다.
 	while (process_exist())
 	{
+		check_zombie();
 		sleep(2);
 	}
 	return 0;

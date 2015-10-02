@@ -21,7 +21,9 @@ const char ACTION_WAIT[10] = "wait";
 const char ACTION_RESPAWN[10] = "respawn";
 
 //config 파일을 가리키는 FILE 포인터입니다. 
-FILE* argv_file;		
+FILE* argv_file;
+//stderr이 될 파일을 가리키는 FILE 포인터입니다. 이를 fileno함수를 이용해서 파일 디스크립터로 바꿉니다.
+FILE* stderr_file;
 
 //int line_many 실행해야할 행들의 수입니다. 이 값이 0이하면 프로세스 실행없이 바로 종료합니다.
 int line_many;
@@ -78,6 +80,7 @@ process_running ** proc_array; //실행 중인 프로세스에 관한 정보가 
 int check_action(char* string);
 int check_id(char * string);
 int check_pipe_id(char* string);
+void check_zombie();
 void file_open(char **argv);
 int letter_cnt(char * string, char letter);
 void oneline_process_run(int line_index);
@@ -88,6 +91,7 @@ void process_run();
 void read_config_file();
 void read_new_line_letter();
 void remove_string_space(char* string);
+void set_stderr();
 void sigchld_handler_parents();
 void sigint_handler_parents(int signo);
 void signal_regist_parents();
