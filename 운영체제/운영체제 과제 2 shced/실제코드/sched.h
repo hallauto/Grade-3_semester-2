@@ -14,6 +14,7 @@
 FILE *argv_file; //data파일을 접근할 때 쓸 FILE 포인터입니다.
 int line_many; //파일의 줄 수입니다. 이 수만큼 parsed_string과 process_running 배열의 길이를 할당합니다.
 int correct_process_many; //형식에 맞는 프로세스의 갯수입니다. 만약 이 값이 260개 이상이면, 이 이상의 프로세스는 계산에 쓰이지 않습니다.
+int last_process_index; //마지막으로 발견된 형식에 맞는 프로세스의 line_index입니다. 라인인덱스를 이용하는 검사는 여기까지 검사합니다.
 
 char** input_string_array; //파일 내부의 내용을 한 줄씩 나눠서 저장한 배열입니다.
 
@@ -57,6 +58,7 @@ process_running* proc_run_array; //실행 중인 프로세스의 정보가 담�
 
 //------------여기서 부터는 함수 선언만 있습니다.--------------//
 
+int letter_cnt(char * string, char letter);
 int check_arrive_time(char* seperated_string);
 int check_id(char* seperated_string);
 int check_priority(char* seperated_string);

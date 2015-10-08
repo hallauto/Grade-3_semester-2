@@ -13,6 +13,28 @@
 
 #include "sched.h"
 
+
+/**
+ * 특정 문자열에서 특정 문자의 갯수를 세는 코드입니다.
+ * char* string: 특정 문자를 포함한 문자열
+ * char letter: 찾는 문자
+ */
+ int letter_cnt(char * string, char letter)
+ {
+	 int result = 0;
+	 
+	 while (*string) //string안에 값이 NULL이면 문자열이 끝난것이므로 루프가 끝납니다.
+	 {
+		 if (letter == * string)
+		 {
+			 result++;
+		 }
+		 string++;
+	 }
+	 
+	 return result;
+ }
+
 /**
  * \n의 갯수 = 행의 갯수를 읽는 함수입니다. 이후에 이 행의 갯수 만큼 parseed_string 구조체의 배열을 동적으로 할당할 것입니다.
  */ 
@@ -57,6 +79,10 @@ void read_data_file()
 
 int check_id(char* seperated_string)
 {
+	if (strlen(seperated_string) == 0)
+	{
+
+	}
 	return 0;
 }
 
@@ -75,7 +101,10 @@ int check_priority(char* seperated_string)
 	return 0;
 }
 
-void parse_string(int line_index)
+/**
+* 입력된 한 줄을 파싱하는 함수입니다. 오류가 있으면 1을 반환합니다.
+*/
+int parse_string(int line_index)
 {
 	char * copied_string = NULL; //strsep함수를 사용하기위해서는 내용이 변해도 문제없는 문자열이 필요합니다. 이를 위해 strdup함수를 이용해서 문자열을 복제할 것입니다.
 	char * seperated_string = NULL; //strsep함수로 분리된 문자열은 여기에 저장됩니다. 이후에 값을 parse_str_array의 원소에 저장할 것입니다.
@@ -83,15 +112,17 @@ void parse_string(int line_index)
 	
 	if (strlen(input_string_array[line_index]) == 0 || input_string_array[line_index][0] == '#')
 	{
-		return;
+		return 1;
 	}
+
+	if (letter_cnt(input_string_array[line_index],*delimiter) != 3)
 	
 	seperated_string = strsep(&copied_string, delimiter);
 	if (check_id(seperated_string)) //먼저 id의 형식이 맞는지 확인합니다. 문제가 있으면 if는 참입니다.
 	{
 		fprintf(stderr,"invalid process id ‘%s’ in line %d, ignored",seperated_string, line_index);
 		parsed_str_array[line_index].program_id[0] = '#'; //오류가 있는 칸임을 알리는 값으로 id의 맨 앞을 #으로 지정합니다.
-		return;
+		return 1;
 	}
 	
 	//문제가 없으면 id를 구조체에 저장합니다.
@@ -102,7 +133,7 @@ void parse_string(int line_index)
 	{
 		fprintf(stderr,"invalid arrive-time ‘%s’ in line %d, ignored",seperated_string, line_index);
 		parsed_str_array[line_index].program_id[0] = '#'; //오류가 있는 칸임을 알리는 값으로 id의 맨 앞을 #으로 지정합니다.
-		return;
+		return 1;
 	}
 	
 	parsed_str_array[line_index].arrive_time = atoi(seperated_string);
@@ -112,7 +143,7 @@ void parse_string(int line_index)
 	{
 		fprintf(stderr,"invalid service-time ‘%s’ in line %d, ignored",seperated_string, line_index);
 		parsed_str_array[line_index].program_id[0] = '#'; //오류가 있는 칸임을 알리는 값으로 id의 맨 앞을 #으로 지정합니다.
-		return;
+		return 1;
 	}
 	
 	parsed_str_array[line_index].service_time = atoi(seperated_string);
@@ -122,7 +153,7 @@ void parse_string(int line_index)
 	{
 		fprintf(stderr,"invalid priority ‘%s’ in line %d, ignored",seperated_string, line_index);
 		parsed_str_array[line_index].program_id[0] = '#'; //오류가 있는 칸임을 알리는 값으로 id의 맨 앞을 #으로 지정합니다.
-		return;
+		return 1;
 	}
 	
 	parsed_str_array[line_index].priority = atoi(seperated_string);
@@ -130,6 +161,9 @@ void parse_string(int line_index)
 	
 	
 	correct_process_many++;
+	last_process_index = line_index;
+
+	return 0;
 }
 
  /**
