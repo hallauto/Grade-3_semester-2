@@ -14,6 +14,7 @@
 FILE *argv_file; //data파일을 접근할 때 쓸 FILE 포인터입니다.
 int line_many; //파일의 줄 수입니다. 이 수만큼 parsed_string과 process_running 배열의 길이를 할당합니다.
 
+char** input_string_array; //파일 내부의 내용을 한 줄씩 나눠서 저장한 배열입니다.
 
 typedef struct parsed_string{
 
