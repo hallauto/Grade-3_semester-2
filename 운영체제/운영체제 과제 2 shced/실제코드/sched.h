@@ -64,6 +64,7 @@ int check_id(char* seperated_string);
 int check_priority(char* seperated_string);
 int check_service_time(char* seperated_string);
 void file_open(char** argv);
+int parse_string(int line_index);
 void read_data_file();
 void read_new_line_letter();
-void parse_string(int line_index);
+ void remove_string_space(char* string);
