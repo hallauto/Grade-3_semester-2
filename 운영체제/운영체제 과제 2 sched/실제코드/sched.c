@@ -87,51 +87,51 @@ void read_data_file()
   * 어디까지나 앞과 뒤만 제거하므로, 사이에 있는 공백은 제거하지 않습니다.
   * char* string: 공백을 제거할 문자열입니다.
   */
- void remove_string_space(char* string)
- {
-	 int string_length = strlen(string);
-	 int string_index = 0;
-	 int last_letter_index = 0; //탐색 중 마지막으로 문자가 있던 인덱스입니다.
-	 int next_letter_index = 0; //last_letter_index가 변경된 이후, 처음으로 문자가 있던 인덱스입니다. 만일 이 인덱스가 strlen과 같다면, 이는 문자가 더 없다는 뜻입니다.
-	 
-	 for (string_index = 0; string_index < string_length; string_index++)
-	 {
-		 if (!isspace((int)string[string_index])) //공백이 아니면 last_letter_index값을 변경합니다.
-		 {
-			 last_letter_index = string_index;
-		 }
-		 else if (last_letter_index == 0) //공백이지만 아직까지 문자가 발견된 적은 없습니다. 즉, 문자열 앞부분에 공백이 있습니다. 이를 제거합니다.
-		 {
-			 int remove_index; //제거할 때 쓰일 인덱스입니다.
-			 for (remove_index = string_index + 1; remove_index <= string_length; remove_index++) //현재 위치부터 이 뒤에 있는 값을 앞으로 넣어야합니다. 이를 위한 함수입니다.
-			 {
-				 string[remove_index - 1] = string[remove_index];
-			 }
-			 string_length--;
-			 string_index--; //문자열을 한칸 앞으로 당겼으므로, 한번더 같은 곳을 검사해야합니다. 이를 위해 string_index를 1 감소시킵니다.
-		 }
-		 else //이번에는 공백이 문자열 사이에 있는지 끝에 있는지를 검사해야합니다.
-		 {
-			 if (next_letter_index < string_index) //next_letter_index가 string_index보다 작다면 이는 공백 다음에 문자가 있는지 탐색을 하지않았다는 뜻입니다. 탐색을 시작합니다.
-			 {
-				 for (next_letter_index = string_index; next_letter_index < string_length; next_letter_index++)
-				 {
-					 if (!isspace((int)string[next_letter_index])) //문자가 발견되었습니다. 바로 
+void remove_string_space(char* string)
+{
+	int string_length = strlen(string);
+	int string_index = 0;
+	int last_letter_index = 0; //탐색 중 마지막으로 문자가 있던 인덱스입니다.
+	int next_letter_index = 0; //last_letter_index가 변경된 이후, 처음으로 문자가 있던 인덱스입니다. 만일 이 인덱스가 strlen과 같다면, 이는 문자가 더 없다는 뜻입니다.
+
+	for (string_index = 0; string_index < string_length; string_index++)
+	{
+		if (!isspace((int)string[string_index])) //공백이 아니면 last_letter_index값을 변경합니다.
+		{
+			last_letter_index = string_index;
+		}
+		else if (last_letter_index == 0) //공백이지만 아직까지 문자가 발견된 적은 없습니다. 즉, 문자열 앞부분에 공백이 있습니다. 이를 제거합니다.
+		{
+			int remove_index; //제거할 때 쓰일 인덱스입니다.
+			for (remove_index = string_index + 1; remove_index <= string_length; remove_index++) //현재 위치부터 이 뒤에 있는 값을 앞으로 넣어야합니다. 이를 위한 함수입니다.
+			{
+				string[remove_index - 1] = string[remove_index];
+			}
+			string_length--;
+			string_index--; //문자열을 한칸 앞으로 당겼으므로, 한번더 같은 곳을 검사해야합니다. 이를 위해 string_index를 1 감소시킵니다.
+		}
+		else //이번에는 공백이 문자열 사이에 있는지 끝에 있는지를 검사해야합니다.
+		{
+			if (next_letter_index < string_index) //next_letter_index가 string_index보다 작다면 이는 공백 다음에 문자가 있는지 탐색을 하지않았다는 뜻입니다. 탐색을 시작합니다.
+			{
+				for (next_letter_index = string_index; next_letter_index < string_length; next_letter_index++)
+				{
+					if (!isspace((int)string[next_letter_index])) //문자가 발견되었습니다. 바로 
 						break;
-				 }
-				 
-				 if (isspace((int)string[string_length-1]))
+				}
+
+				if (isspace((int)string[string_length-1]))
 					next_letter_index++;
-			 }
-			 
-			 if (next_letter_index >= string_length) //next_letter_index가 string_length보다 크거나 같다면 공백이 문자열 뒤에 존재한다는 뜻입니다. 바로 제거합니다.
-			 {
-				 string[last_letter_index+1] = string[string_length];
-				 string_length = last_letter_index - 1;
-			 }
-		 }
-	 }
- }
+			}
+
+			if (next_letter_index >= string_length) //next_letter_index가 string_length보다 크거나 같다면 공백이 문자열 뒤에 존재한다는 뜻입니다. 바로 제거합니다.
+			{
+				string[last_letter_index+1] = string[string_length];
+				string_length = last_letter_index - 1;
+			}
+		}
+	}
+}
 
 /**
  * id가 형식에 맞는지 체크합니다.
@@ -317,6 +317,29 @@ int parse_string(int line_index)
 	printf("%d\n",parsed_str_array[line_index].priority);
 	
 	return 0;
+}
+
+/**
+ * SJF알고리즘에 따라 다음에 실행할 프로세스의 이름을 가져오는 함수입니다.
+ */
+int select_process_SJF()
+{
+	
+}
+
+/**
+ * 이제 프로세스들을 실행합니다. 프로세스들은 한번의 실행(1밀리초)을 하고 그 후에 검사를 합니다. 검사하는 순서는
+ * 1. 실행이 끝난 프로세스가 있는지 확인
+ * 2. 시작할 프로세스가 있는지 확인(parsed_str_array 탐색)
+ * 3. 실행중인 프로세스 중에서 해당 스케쥴링 알고리즘에 따라 선택된 프로세스를 실행
+ *
+ * int ALGORITHM:프로세스 스케쥴러의 스케쥴링 알고리즘입니다. 미리 지정된 한정 변수로 지정합니다.
+ */
+void process_run(int ALGORITHM)
+{
+	current_cpu_time = 0;
+	//int end_cpu_time; //모든 실행이 끝난 후, 실행에 걸린 시간을 출력할 때 쓰일 변수입니다.
+
 }
 
  /**
