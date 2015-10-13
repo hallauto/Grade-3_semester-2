@@ -68,7 +68,6 @@ void read_data_file()
 	
 	input_string_array = calloc(line_many,sizeof(char*));
 	parsed_str_array = calloc(line_many,sizeof(parsed_string));
-	proc_run_array = calloc(line_many,sizeof(process_running));
 
 	int line_index; //각 줄을 탐색하는데 쓰일 인덱스입니다.
 	for (line_index = 0; !feof(argv_file); line_index++)
@@ -80,6 +79,10 @@ void read_data_file()
 			
 		}
 	}
+
+	//이제 correct_process_many에 맞춰 Running Que의 길이를 지정합니다.
+	running_que = calloc(correct_process_many,sizeof(int));
+	run_que_many = 0;
 }
 
  /**
@@ -321,10 +324,54 @@ int parse_string(int line_index)
 
 /**
  * SJF알고리즘에 따라 다음에 실행할 프로세스의 이름을 가져오는 함수입니다.
+ * return fast_index 알고리즘이 선택한 프로세스의 running_que 인덱스입니다.
+ * -1:현재 실행중인 프로세스가 선택되었습니다. 진행을 계속합니다.
+ * 0이상:해당 인덱스의 프로세스가 선택되었습니다. 이를 실행시킵니다.
  */
 int select_process_SJF()
 {
-	
+	int que_index; //que를 탐색할 때 쓸 인덱스입니다.
+	int fast_index = -1; //현재 실행중인 프로세스 + Ready Que 중에서 가장 Shortes job인 프로세스의 parsed_string 인덱스입니다.
+	int fast_service_time; ////현재 실행중인 프로세스 + Ready Que 중에서 가장 Shortes job인 프로세스의 service_time입니다.
+	int current_service_time = parsed_str_array[running_que[cur_run_proc]].service_time;
+
+	fast_service_time = current_service_time;
+	for (que_index = 0; que_index < run_que_many; que_index++)
+	{
+		if (parsed_str_array[running_que[que_index]].service_time < fast_service_time)
+		{
+			fast_service_time = parsed_str_array[running_que[que_index]].service_time;
+			fast_index = que_index;
+		}
+	}
+
+	return fast_index;
+}
+
+/**
+ * SRT알고리즘에 따라 다음에 실행할 프로세스의 이름을 가져오는 함수입니다.
+ * return fast_index 알고리즘이 선택한 프로세스의 running_que 인덱스입니다.
+ * -1:현재 실행중인 프로세스가 선택되었습니다. 진행을 계속합니다.
+ * 0이상:해당 인덱스의 프로세스가 선택되었습니다. 이를 실행시킵니다.
+ */
+int select_process_SRT()
+{
+	int que_index; //que를 탐색할 때 쓸 인덱스입니다.
+	int fast_index = -1; //현재 실행중인 프로세스 + Ready Que 중에서 가장 Shortes job인 프로세스의 parsed_string 인덱스입니다.
+	int fast_remain_time; ////현재 실행중인 프로세스 + Ready Que 중에서 가장 Shortest remain time인 프로세스의 remain_time입니다.
+	int current_remain_time = parsed_str_array[running_que[cur_run_proc]].remain_time;
+
+	fast_remain_time = current_remain_time;
+	for (que_index = 0; que_index < run_que_many; que_index++)
+	{
+		if (parsed_str_array[running_que[que_index]].remain_time < fast_remain_time)
+		{
+			fast_remain_time = parsed_str_array[running_que[que_index]].remain_time;
+			fast_index = que_index;
+		}
+	}
+
+	return fast_index;
 }
 
 /**
