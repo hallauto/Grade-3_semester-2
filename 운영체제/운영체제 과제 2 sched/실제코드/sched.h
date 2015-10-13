@@ -38,10 +38,12 @@ typedef struct letter_node{
  * 모든 계산이 끝난후에 실행 과정을 출력할 때 사용할 연결 리스트 구조체입니다.
  * int list_many = list에 있는 노드 수 = 길이입니다. 이 값이 0이 될때까지 출력하는 것이 알고리즘 평가의 마지막 과정입니다.
  * letter_node* head = list의 헤드(맨 앞의 노드)입니다.
+ * letter_node* tail = list의 테일(맨 끝의 노드)입니다.
  */
 typedef struct letter_list{
 	int list_many;
 	letter_node* head;
+	letter_node* tail;
 
 }letter_list;
 

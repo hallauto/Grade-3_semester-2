@@ -13,27 +13,73 @@
 
 #include "sched.h"
 
+/**
+ * letter_list에 letter_node를 추가하는 함수입니다.
+ * letter_list list: 노드가 추가될 리스트입니다.
+ * char input_letter: 새로 추가될 노드의 문자입니다.
+ */
+void list_add(letter_list list, char input_letter)
+{
+	letter_node* new_node = calloc(sizeof(letter_node));
+	new_node->letter = input_letter;
+
+	//새로운 노드를 리스트 끝에 연결하고 새로운 tail로 지정합니다.
+	letter_list.tail->next_node = new_node;
+	letter_list.tail = new_node;
+
+	//만약 리스트의 길이가 0이라면 이는 새로 추가된 노드가 노드의 tail이자 head라는 의미입니다. 새로운 노드를 head로도 지정합니다.
+	if(letter_list.list_many == 0)
+	{
+		letter_list.head = new_node;
+	}
+
+	letter_list.list_many++;
+}
+
+/**
+ * 리스트의 head에서부터 하나씩 노드의 문자를 가져오고 노드를 제거합니다.
+ * letter_list list: 노드가 나올 리스트입니다.
+ * return return_letter: 노드에서 반환된 문자입니다. 만약 노드가 없다면 반환값은 null입니다.
+ */
+char list_pop(letter_list list)
+{
+	//list_many가 0이면 가져올 노드가 없다는 뜻입니다. 0(NULL)을 반환합니다.
+	if (list.list_many == 0)
+	{
+		return 0;
+	}
+
+	//반환할 문자 값을 가져옵니다.
+	char return_letter = list.head->letter;
+
+	//이제 head를 제거하고 다음 노드를 새로운 head로 지정합니다.
+	letter_list delete_node = list.head;
+	list.head = list.head->next_node;
+	free(delete_node);
+
+	return return_letter;
+}
 
 /**
  * 특정 문자열에서 특정 문자의 갯수를 세는 코드입니다.
  * char* string: 특정 문자를 포함한 문자열
  * char letter: 찾는 문자
  */
- int letter_cnt(char * string, char letter)
- {
-	 int result = 0;
+int letter_cnt(char * string, char letter)
+{
+	int result = 0;
 	 
-	 while (*string) //string안에 값이 NULL이면 문자열이 끝난것이므로 루프가 끝납니다.
-	 {
-		 if (letter == * string)
-		 {
-			 result++;
-		 }
-		 string++;
-	 }
+	while (*string) //string안에 값이 NULL이면 문자열이 끝난것이므로 루프가 끝납니다.
+	{
+		if (letter == * string)
+		{
+			result++;
+		}
+		string++;
+	}
 	 
-	 return result;
- }
+	return result;
+}
 
 /**
  * \n의 갯수 = 행의 갯수를 읽는 함수입니다. 이후에 이 행의 갯수 만큼 parseed_string 구조체의 배열을 동적으로 할당할 것입니다.
