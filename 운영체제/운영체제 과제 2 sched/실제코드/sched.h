@@ -92,7 +92,7 @@ int run_que_many; //현재 Running Que의 길이입니다.
 int cur_run_proc; //현재 실행중인 프로세스입니다.
 
 parsed_string* parsed_str_array; //각 라인의 파싱결과가 담긴 구조체들이 저장될 배열입니다.
-process_running* proc_run_array; //실행 중인 프로세스의 정보가 담긴 구조체들이 저장될 배열입니다.
+//process_running* proc_run_array; //실행 중인 프로세스의 정보가 담긴 구조체들이 저장될 배열입니다.
 
 
 //------------여기서 부터는 함수 선언만 있습니다.--------------//

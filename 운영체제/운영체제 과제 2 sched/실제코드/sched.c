@@ -20,20 +20,20 @@
  */
 void list_add(letter_list list, char input_letter)
 {
-	letter_node* new_node = calloc(sizeof(letter_node));
+	letter_node* new_node = calloc(1,sizeof(letter_node));
 	new_node->letter = input_letter;
 
 	//새로운 노드를 리스트 끝에 연결하고 새로운 tail로 지정합니다.
-	letter_list.tail->next_node = new_node;
-	letter_list.tail = new_node;
+	list.tail->next_node = new_node;
+	list.tail = new_node;
 
 	//만약 리스트의 길이가 0이라면 이는 새로 추가된 노드가 노드의 tail이자 head라는 의미입니다. 새로운 노드를 head로도 지정합니다.
-	if(letter_list.list_many == 0)
+	if(list.list_many == 0)
 	{
-		letter_list.head = new_node;
+		list.head = new_node;
 	}
 
-	letter_list.list_many++;
+	list.list_many++;
 }
 
 /**
@@ -53,7 +53,7 @@ char list_pop(letter_list list)
 	char return_letter = list.head->letter;
 
 	//이제 head를 제거하고 다음 노드를 새로운 head로 지정합니다.
-	letter_list delete_node = list.head;
+	letter_node *delete_node = list.head;
 	list.head = list.head->next_node;
 	free(delete_node);
 
