@@ -15,46 +15,51 @@
 
 /**
  * letter_list에 letter_node를 추가하는 함수입니다.
- * letter_list list: 노드가 추가될 리스트입니다.
+ * int line_index: 노드가 추가될 print_list를 가진 parsed_str_array의 배열 인덱스입니다.
  * char input_letter: 새로 추가될 노드의 문자입니다.
  */
-void list_add(letter_list list, char input_letter)
+void list_add(int line_index, char input_letter)
 {
 	letter_node* new_node = calloc(1,sizeof(letter_node));
 	new_node->letter = input_letter;
 
-	//새로운 노드를 리스트 끝에 연결하고 새로운 tail로 지정합니다.
-	list.tail->next_node = new_node;
-	list.tail = new_node;
-
 	//만약 리스트의 길이가 0이라면 이는 새로 추가된 노드가 노드의 tail이자 head라는 의미입니다. 새로운 노드를 head로도 지정합니다.
-	if(list.list_many == 0)
+	if(parsed_str_array[line_index].print_list.list_many == 0)
 	{
-		list.head = new_node;
+		parsed_str_array[line_index].print_list.tail = new_node;
+		parsed_str_array[line_index].print_list.head = new_node;
 	}
+	//새로운 노드를 리스트 끝에 연결하고 새로운 tail로 지정합니다.
+	else
+	{
+		parsed_str_array[line_index].print_list.tail->next_node = new_node;
+		parsed_str_array[line_index].print_list.tail = new_node;
+	}
+	
+	printf("%c input",parsed_str_array[line_index].print_list.tail->letter);
 
-	list.list_many++;
+	parsed_str_array[line_index].print_list.list_many++;
 }
 
 /**
  * 리스트의 head에서부터 하나씩 노드의 문자를 가져오고 노드를 제거합니다.
- * letter_list list: 노드가 나올 리스트입니다.
+ * int line_index: 노드가 추가될 print_list를 가진 parsed_str_array의 배열 인덱스입니다.
  * return return_letter: 노드에서 반환된 문자입니다. 만약 노드가 없다면 반환값은 null입니다.
  */
-char list_pop(letter_list list)
+char list_pop(int line_index)
 {
 	//list_many가 0이면 가져올 노드가 없다는 뜻입니다. 0(NULL)을 반환합니다.
-	if (list.list_many == 0)
+	if (parsed_str_array[line_index].print_list.list_many == 0)
 	{
 		return 0;
 	}
 
 	//반환할 문자 값을 가져옵니다.
-	char return_letter = list.head->letter;
+	char return_letter = parsed_str_array[line_index].print_list.head->letter;
 
 	//이제 head를 제거하고 다음 노드를 새로운 head로 지정합니다.
-	letter_node *delete_node = list.head;
-	list.head = list.head->next_node;
+	letter_node *delete_node = parsed_str_array[line_index].print_list.head;
+	parsed_str_array[line_index].print_list.head = parsed_str_array[line_index].print_list.head->next_node;
 	free(delete_node);
 
 	return return_letter;
@@ -124,11 +129,15 @@ void read_data_file()
 			parse_string(line_index);
 			
 		}
+		else
+		{
+			parsed_str_array[line_index].program_id[0] = '#';
+		}
 	}
 
-	//이제 correct_process_many에 맞춰 Running Que의 길이를 지정합니다.
-	running_que = calloc(correct_process_many,sizeof(int));
-	run_que_many = 0;
+	//이제 correct_process_many에 맞춰 Ready Que의 길이를 지정합니다.
+	ready_que = calloc(correct_process_many,sizeof(int));
+	ready_que_many = 0;
 }
 
  /**
@@ -294,8 +303,6 @@ int parse_string(int line_index)
 	
 	int check_result = 0; //파싱후의 구문을 검사한 결과 값입니다.
 	
-	correct_process_many = 0;
-	
 	copied_string = strdup(input_string_array[line_index]);
 	remove_string_space(copied_string);
 
@@ -342,6 +349,7 @@ int parse_string(int line_index)
 	}
 	
 	parsed_str_array[line_index].service_time = atoi(seperated_string);
+	parsed_str_array[line_index].remain_time = parsed_str_array[line_index].service_time;
 	
 	seperated_string = strsep(&copied_string,delimiter);
 	remove_string_space(seperated_string);
@@ -353,7 +361,6 @@ int parse_string(int line_index)
 	}
 	
 	parsed_str_array[line_index].priority = atoi(seperated_string);
-	
 	
 	
 	correct_process_many++;
@@ -370,23 +377,33 @@ int parse_string(int line_index)
 
 /**
  * SJF알고리즘에 따라 다음에 실행할 프로세스의 이름을 가져오는 함수입니다.
- * return fast_index 알고리즘이 선택한 프로세스의 running_que 인덱스입니다.
+ * return fast_index 알고리즘이 선택한 프로세스의 ready_que 인덱스입니다.
  * -1:현재 실행중인 프로세스가 선택되었습니다. 진행을 계속합니다.
  * 0이상:해당 인덱스의 프로세스가 선택되었습니다. 이를 실행시킵니다.
  */
 int select_process_SJF()
 {
 	int que_index; //que를 탐색할 때 쓸 인덱스입니다.
-	int fast_index = -1; //현재 실행중인 프로세스 + Ready Que 중에서 가장 Shortes job인 프로세스의 parsed_string 인덱스입니다.
-	int fast_service_time; ////현재 실행중인 프로세스 + Ready Que 중에서 가장 Shortes job인 프로세스의 service_time입니다.
-	int current_service_time = parsed_str_array[running_que[cur_run_proc]].service_time;
-
-	fast_service_time = current_service_time;
-	for (que_index = 0; que_index < run_que_many; que_index++)
+	int fast_index; //현재 실행중인 프로세스 + Ready Que 중에서 가장 Shortes job인 프로세스의 parsed_string 인덱스입니다.
+	int fast_service_time; //현재 실행중인 프로세스 + Ready Que 중에서 가장 Shortes job인 프로세스의 service_time입니다.
+	int current_service_time; //현재 실행중인 프로세스의 service_time입니다. 실행 중인 프로세스가 없다면 최대값 + 1로 초기화합니다.
+	
+	if(cur_run_proc < 0) //현재 실행중인 프로세스가 없습니다.
 	{
-		if (parsed_str_array[running_que[que_index]].service_time < fast_service_time)
+		current_service_time = 31; //현재 Ready Que에 있는 프로그램 중에서 조건에 맞는 프로그램을 찾으면 됩니다.
+	}
+	else
+	{
+		current_service_time = parsed_str_array[ready_que[cur_run_proc]].service_time;
+	}
+
+	fast_index = cur_run_proc;
+	fast_service_time = current_service_time;
+	for (que_index = 0; que_index < ready_que_many; que_index++)
+	{
+		if (parsed_str_array[ready_que[que_index]].service_time < fast_service_time)
 		{
-			fast_service_time = parsed_str_array[running_que[que_index]].service_time;
+			fast_service_time = parsed_str_array[ready_que[que_index]].service_time;
 			fast_index = que_index;
 		}
 	}
@@ -396,7 +413,7 @@ int select_process_SJF()
 
 /**
  * SRT알고리즘에 따라 다음에 실행할 프로세스의 이름을 가져오는 함수입니다.
- * return fast_index 알고리즘이 선택한 프로세스의 running_que 인덱스입니다.
+ * return fast_index 알고리즘이 선택한 프로세스의 ready_que 인덱스입니다.
  * -1:현재 실행중인 프로세스가 선택되었습니다. 진행을 계속합니다.
  * 0이상:해당 인덱스의 프로세스가 선택되었습니다. 이를 실행시킵니다.
  */
@@ -405,19 +422,77 @@ int select_process_SRT()
 	int que_index; //que를 탐색할 때 쓸 인덱스입니다.
 	int fast_index = -1; //현재 실행중인 프로세스 + Ready Que 중에서 가장 Shortes job인 프로세스의 parsed_string 인덱스입니다.
 	int fast_remain_time; ////현재 실행중인 프로세스 + Ready Que 중에서 가장 Shortest remain time인 프로세스의 remain_time입니다.
-	int current_remain_time = parsed_str_array[running_que[cur_run_proc]].remain_time;
+	int current_remain_time; //현재 실행중인 프로세스의 remain_time입니다. 실행 중인 프로세스가 없다면 최대값 + 1로 초기화합니다.
 
-	fast_remain_time = current_remain_time;
-	for (que_index = 0; que_index < run_que_many; que_index++)
+	if (cur_run_proc < 0)
 	{
-		if (parsed_str_array[running_que[que_index]].remain_time < fast_remain_time)
+		current_remain_time = 31;
+	}
+	else
+	{
+		current_remain_time = parsed_str_array[ready_que[cur_run_proc]].remain_time;
+	}
+	
+	fast_index = cur_run_proc;
+	fast_remain_time = current_remain_time;
+	for (que_index = 0; que_index < ready_que_many; que_index++)
+	{
+		if (parsed_str_array[ready_que[que_index]].remain_time < fast_remain_time)
 		{
-			fast_remain_time = parsed_str_array[running_que[que_index]].remain_time;
+			fast_remain_time = parsed_str_array[ready_que[que_index]].remain_time;
 			fast_index = que_index;
 		}
 	}
 
 	return fast_index;
+}
+
+/**
+ * 현재 cpu시간에 시작하는 프로세스를 찾아서 그 인덱스를 ready_que에 저장합니다.
+ */
+void find_start_process()
+{
+	int line_index;
+	int check_process_many = 0;
+	for (line_index = 0; line_index < line_many; line_index++)
+	{
+		if (parsed_str_array[line_index].program_id[0] == '#')
+		{
+			continue;
+		}
+		else if (current_cpu_time == parsed_str_array[line_index].arrive_time)
+		{
+			check_process_many++;
+			ready_que[ready_que_many] = line_index;
+			ready_que_many++;
+			
+			printf("%s프로세스 ready que 도착 시간: %d\n",parsed_str_array[line_index].program_id, parsed_str_array[line_index].arrive_time);
+		}
+	}
+}
+
+/**
+ * 현재 실행중인 프로세스가 종료될 순간인지 검사합니다. 종료될 순간이면 종료 시간을 저장하고, 현재 실행중인 프로세스가 없다고 알립니다.
+ */
+void check_end_process()
+{
+	int delete_index; //Ready Que에서 종료된 프로세스의 인덱스를 제거할 때 쓸 인덱스입니다.
+	if (cur_run_proc < 0)
+	{
+		return;
+	}
+	parsed_str_array[ready_que[cur_run_proc]].remain_time--;
+	if (parsed_str_array[ready_que[cur_run_proc]].remain_time == 0)
+	{
+		parsed_str_array[ready_que[cur_run_proc]].complete_time = current_cpu_time; //먼저 종료시간을 등록합니다.
+		for (delete_index = cur_run_proc + 1; delete_index < ready_que_many; delete_index++) //이제 종료된 프로세스를 큐에서 제거합니다. 이를 위해 뒤에서부터 하나씩 덮어씁니다.
+		{
+			ready_que[delete_index - 1] = ready_que[delete_index];
+		}
+		ready_que_many--; //마지막으로 ready_que_many를 축소합니다.
+		cur_run_proc = -1;
+		end_process_many++;
+	}
 }
 
 /**
@@ -431,8 +506,45 @@ int select_process_SRT()
 void process_run(int ALGORITHM)
 {
 	current_cpu_time = 0;
-	//int end_cpu_time; //모든 실행이 끝난 후, 실행에 걸린 시간을 출력할 때 쓰일 변수입니다.
-
+	cur_run_proc = -1;
+	end_process_many = 0;
+	int line_index; //parsed_str_array를 탐색할 때 사용할 인덱스입니다.
+	
+	//correct_process_many 개의 프로세스를 검색할 때까지 반복문으로 검사합니다.
+	while (end_process_many < correct_process_many)
+	{
+		check_end_process();
+		find_start_process();
+		
+		cur_run_proc = select_process_SJF();
+		
+		list_add(ready_que[cur_run_proc], '*');
+		
+		for (line_index = 0; line_index < line_many; line_index++)
+		{
+			if (parsed_str_array[line_index].program_id[0] == '#' || line_index == ready_que[cur_run_proc])
+				continue;			
+			list_add(line_index, ' ');
+		}
+		
+		current_cpu_time++;
+	}
+	
+	for (line_index = 0; line_index < line_many; line_index++)
+	{
+		if (parsed_str_array[line_index].program_id[0] == '#')
+			continue;
+	
+		else
+		{
+			printf("%s  ",parsed_str_array[line_index].program_id);
+			while(parsed_str_array[line_index].print_list.list_many > 0)
+			{
+				printf("%c",list_pop(line_index));
+			}
+			printf("\n");
+		}
+	}
 }
 
  /**
@@ -454,6 +566,8 @@ void file_open(char **argv)
 	read_new_line_letter(argv_file);
 	
 	read_data_file();
+	
+	process_run(1);
 }
 
 

@@ -18,8 +18,9 @@ const int PR = 4;
 
 FILE *argv_file; //data파일을 접근할 때 쓸 FILE 포인터입니다.
 int line_many; //파일의 줄 수입니다. 이 수만큼 parsed_string과 process_running 배열의 길이를 할당합니다.
-int correct_process_many; //형식에 맞는 프로세스의 갯수입니다. 만약 이 값이 260개 이상이면, 이 이상의 프로세스는 계산에 쓰이지 않습니다.
-int last_process_index; //마지막으로 발견된 형식에 맞는 프로세스의 line_index입니다. 라인인덱스를 이용하는 검사는 여기까지 검사합니다.
+int correct_process_many; //형식에 맞는 프로세스의 갯수입니다.
+int end_process_many; //현재까지 완료한 프로세스의 갯수입니다. 이 값이 correct_process_many와 같으면 모든 프로세스를 실행한 것이므로 검사를 종료합니다.
+int last_process_index; //마지막으로 발견된 형식에 맞는 프로세스의 line_index입니다. 라인 인덱스를 이용하는 검사는 여기까지 검사합니다.
 
 char** input_string_array; //파일 내부의 내용을 한 줄씩 나눠서 저장한 배열입니다.
 
@@ -62,6 +63,7 @@ typedef struct parsed_string{
 
 	int remain_time;
 	int complete_time;
+	int turnarround_time;
 
 	letter_list print_list;
 
@@ -87,9 +89,9 @@ typedef struct process_correct{
 
 */
 
-int* running_que; //Running Que입니다. 길이는 correct_process_many입니다.
-int run_que_many; //현재 Running Que의 길이입니다.
-int cur_run_proc; //현재 실행중인 프로세스입니다.
+int* ready_que; //Ready Que입니다. 원소는  길이는 correct_process_many입니다.
+int ready_que_many; //현재 Ready Que의 길이입니다.
+int cur_run_proc; //현재 실행 중인 프로세스의 ready_que 인덱스 입니다. -1은 현재 실행 중인 프로그램이 없다는 뜻입니다.
 
 parsed_string* parsed_str_array; //각 라인의 파싱결과가 담긴 구조체들이 저장될 배열입니다.
 //process_running* proc_run_array; //실행 중인 프로세스의 정보가 담긴 구조체들이 저장될 배열입니다.
