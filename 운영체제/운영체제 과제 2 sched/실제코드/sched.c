@@ -56,8 +56,6 @@ void list_add_address(letter_list *list, char input_letter)
 		list->tail->next_node = new_node;
 		list->tail = new_node;
 	}
-	
-	printf("%c input", list->tail->letter);
 
 	list->list_many++;
 }
@@ -388,19 +386,13 @@ int parse_string(int line_index)
 	correct_process_many++;
 	last_process_index = line_index;
 	
-	
-	printf("%s\t",parsed_str_array[line_index].program_id);
-	printf("%d\t",parsed_str_array[line_index].arrive_time);
-	printf("%d\t",parsed_str_array[line_index].service_time);
-	printf("%d\n",parsed_str_array[line_index].priority);
-	
 	return 0;
 }
 
 /**
  * SJF알고리즘에 따라 다음에 실행할 프로세스의 이름을 가져오는 함수입니다.
  * return fast_index 알고리즘이 선택한 프로세스의 ready_que 인덱스입니다.
- * -1:현재 실행중인 프로세스가 선택되었습니다. 진행을 계속합니다.
+ * -1:도착한 프로세스가 없습니다. 일단은 올 때까지 실행을 하지 않습니다.
  * 0이상:해당 인덱스의 프로세스가 선택되었습니다. 이를 실행시킵니다.
  */
 int select_process_SJF()
@@ -436,7 +428,7 @@ int select_process_SJF()
 /**
  * SRT알고리즘에 따라 다음에 실행할 프로세스의 이름을 가져오는 함수입니다.
  * return fast_index 알고리즘이 선택한 프로세스의 ready_que 인덱스입니다.
- * -1:현재 실행중인 프로세스가 선택되었습니다. 진행을 계속합니다.
+ * -1:도착한 프로세스가 없습니다. 일단은 올 때까지 실행을 하지 않습니다.
  * 0이상:해당 인덱스의 프로세스가 선택되었습니다. 이를 실행시킵니다.
  */
 int select_process_SRT()
@@ -470,6 +462,101 @@ int select_process_SRT()
 }
 
 /**
+ * RR알고리즘에 따라 다음에 실행할 프로세스의 이름을 가져오는 함수입니다.
+ * 저의 알고리즘은 동시기에 타임 아웃 처리가 프로그램 도착 처리보다 나중에 이루어지므로, 
+ * 타임 아웃과 도착이 서로 다른 프로세스에서 동시에 발생했을 때, 도착한 프로세스가 먼저 작동합니다. 
+ * 따라서, 예제와는 다른 결과가 나옵니다.
+ * return fast_index 알고리즘이 선택한 프로세스의 ready_que 인덱스입니다.
+ * -1:도착한 프로세스가 없습니다. 일단은 올 때까지 실행을 하지 않습니다.
+ * 0이상:해당 인덱스의 프로세스가 선택되었습니다. 이를 실행시킵니다.
+ */
+int select_process_RR()
+{
+	int que_index; //que를 탐색할 때 쓸 인덱스입니다.
+	int find_index;
+	
+	if (cur_run_proc < 0) //현재 실행중인 프로세스가 없습니다.
+	{
+		if (ready_que_many < 0) //Ready Que에 Ready중인 프로세스가 없습니다.
+		{
+			return -1;
+		}
+		else
+		{
+			parsed_str_array[ready_que[0]].time_quntum = 1;
+			return 0; //먼저 온 순서대로 시작해야합니다. 이에 따라서 타임퀀텀을 주고 1을 합니다.
+		}
+	}
+	else
+	{
+		if (ready_que_many <= 1) //Ready Que에 Reday중인 프로세스가 없습니다.
+		{
+			return cur_run_proc; //기존 프로세스를 계속 이용합니다. 타임아웃은 유지됩니다.
+		}
+		else
+		{
+			parsed_str_array[ready_que[cur_run_proc]].time_quntum--; //먼저 타임 퀀텀을 -1 합니다.
+			if (parsed_str_array[ready_que[cur_run_proc]].time_quntum == 0) //타임 아웃이 일어나는지 검사합니다.
+			{
+				//타임 아웃이 일어났습니다. 일단 기존에 실행하던 프로세스는 Ready Que의 끝자리에 들어가야하므로 이를 위한 백업을 해놓습니다.
+				int backup_line_index = ready_que[cur_run_proc];
+				//이제 앞으로 배열을 한칸씩 당겨서 초기화합니다. 이렇게 해서 바로 다음에 Ready Que에 들어온 프로세스가 실행할 차례가 됩니다.
+				for (que_index = 0; que_index < ready_que_many; que_index++)
+				{
+					ready_que[que_index] = ready_que[que_index + 1];
+				}
+				//이제 백업해놓은 값을 Ready Que 끝에 저장합니다.
+				ready_que[ready_que_many - 1] = backup_line_index;
+				
+				//마지막으로 새롭게 시작할 프로세스에게 타임 퀀텀을 1 부여합니다.
+				parsed_str_array[ready_que[0]].time_quntum = 1;
+				
+				cur_run_proc = 0;
+			}
+			return cur_run_proc;
+		}
+	}
+	
+	return find_index;
+}
+
+/**
+ * PR알고리즘에 따라 다음에 실행할 프로세스의 이름을 가져오는 함수입니다.
+ * return fast_index 알고리즘이 선택한 프로세스의 ready_que 인덱스입니다.
+ * -1:도착한 프로세스가 없습니다. 일단은 올 때까지 실행을 하지 않습니다.
+ * 0이상:해당 인덱스의 프로세스가 선택되었습니다. 이를 실행시킵니다.
+ */
+int select_process_PR()
+{
+	int que_index; //que를 탐색할 때 쓸 인덱스입니다.
+	int fast_index; //현재 실행중인 프로세스 + Ready Que 중에서 가장 Shortes job인 프로세스의 parsed_string 인덱스입니다.
+	int fast_priority; ////현재 실행중인 프로세스 + Ready Que 중에서 가장 priority가 높은 프로세스의 priority입니다. 작은 값이 높은 우선순위입니다.
+	int current_priority; //현재 실행중인 프로세스의 priority입니다. 실행 중인 프로세스가 없다면 최대값 + 1로 초기화합니다.
+	
+	if(cur_run_proc < 0) //현재 실행중인 프로세스가 없습니다.
+	{
+		current_priority = 6; //현재 Ready Que에 있는 프로그램 중에서 조건에 맞는 프로그램을 찾으면 됩니다.
+	}
+	else
+	{
+		current_priority = parsed_str_array[ready_que[cur_run_proc]].priority;
+	}
+
+	fast_index = cur_run_proc;
+	fast_priority = current_priority;
+	for (que_index = 0; que_index < ready_que_many; que_index++)
+	{
+		if (parsed_str_array[ready_que[que_index]].priority < fast_priority)
+		{
+			fast_priority = parsed_str_array[ready_que[que_index]].priority;
+			fast_index = que_index;
+		}
+	}
+
+	return fast_index;
+}
+
+/**
  * 현재 cpu시간에 시작하는 프로그램을 찾아서 그 인덱스를 ready_que에 저장합니다.
  */
 void find_start_process()
@@ -484,8 +571,6 @@ void find_start_process()
 			//Ready Que에 그 프로그램의 정보가 담긴 구조체의 인덱스=line_index를 저장합니다.
 			ready_que[ready_que_many] = line_index;
 			ready_que_many++;
-			
-			printf("%s프로세스 ready que 도착 시간: %d\n",parsed_str_array[line_index].program_id, parsed_str_array[line_index].arrive_time);
 		}
 	}
 }
@@ -531,9 +616,34 @@ void reset_remain_time()
 	}
 }
 
+/**
+ * 스케쥴링  결과를 출력하는 함수입니다. 여기에서 평균 완료시간과 평균 대기시간을 계산합니다.
+ */
 void print_result()
 {
+	int line_index; //parsed_str_array를 탐색할 때 사용할 인덱스입니다.
+	int total_turnarround_time = 0; //각 프로세스의 종료 시간을 모두 합한 값입니다. 이 값을 correct_process_many로 나눈 값이 평균 완료 시간입니다.
+	int total_service_time = 0; //각 프로세스의 실행시간을 모두 합한 값입니다. 이 값을 total_turnarround_time에서 빼고 correct_process_many로 나누면 평균 대기 시간이 나옵니다. 
+	for (line_index = 0; line_index < line_many; line_index++)
+	{
+		if (parsed_str_array[line_index].program_id[0] == '#')
+			continue;
 	
+		else
+		{
+			total_turnarround_time += parsed_str_array[line_index].complete_time - parsed_str_array[line_index].arrive_time;
+			total_service_time += parsed_str_array[line_index].service_time;
+			printf("%s  ",parsed_str_array[line_index].program_id);
+			while(parsed_str_array[line_index].print_list.list_many > 0)
+			{
+				printf("%c",list_pop(line_index));
+			}
+			printf("\n");
+		}
+	}
+	printf("CPU TIME: %d\n",current_cpu_time);
+	printf("AVERAGE TURNARROUND TIME: %.2f\n", (float)total_turnarround_time / correct_process_many);
+	printf("AVERAGE WAITING TIME: %.2f\n", ((float)(total_turnarround_time - total_service_time)) / correct_process_many);
 }
 
 /**
@@ -555,9 +665,13 @@ void process_run(int ALGORITHM)
 	reset_remain_time();
 	
 	//correct_process_many 개의 프로세스를 검색할 때까지 반복문으로 검사합니다.
-	while (end_process_many < correct_process_many)
+	while (1)
 	{
 		check_end_process();
+		if (end_process_many >= correct_process_many)
+		{
+			break;
+		}
 		find_start_process();
 		
 		switch (ALGORITHM)
@@ -573,6 +687,22 @@ void process_run(int ALGORITHM)
 				cur_run_proc = select_process_SRT();
 				break;
 			}
+			case 3:
+			{
+				cur_run_proc = select_process_RR();
+				break;
+			}
+			case 4:
+			{
+				cur_run_proc = select_process_PR();
+				break;
+			}
+		}
+		
+		if (cur_run_proc == -1)
+		{
+			current_cpu_time++;
+			continue;
 		}
 		
 		list_add(ready_que[cur_run_proc], '*');
@@ -583,25 +713,10 @@ void process_run(int ALGORITHM)
 				continue;			
 			list_add(line_index, ' ');
 		}
-		
 		current_cpu_time++;
 	}
 	
-	for (line_index = 0; line_index < line_many; line_index++)
-	{
-		if (parsed_str_array[line_index].program_id[0] == '#')
-			continue;
-	
-		else
-		{
-			printf("%s  ",parsed_str_array[line_index].program_id);
-			while(parsed_str_array[line_index].print_list.list_many > 0)
-			{
-				printf("%c",list_pop(line_index));
-			}
-			printf("\n");
-		}
-	}
+	print_result();
 }
 
  /**
@@ -620,12 +735,20 @@ void file_open(char **argv)
 		return;
 	}
 
+	//먼저 data파일의 줄 갯수를 셉니다.
 	read_new_line_letter(argv_file);
 	
+	//data파일의 내용을 읽고 적절하게 파싱해서 실행하고 스케쥴링할 프로그램의 데이터를 구합니다.
 	read_data_file();
 	
+	printf("\n[SJF]\n");
 	process_run(SJF);
+	printf("\n[SRT]\n");
 	process_run(SRT);
+	printf("\n[RR]\n");
+	process_run(RR);
+	printf("\n[PR]\n");
+	process_run(PR);
 }
 
 
@@ -635,7 +758,7 @@ int main (int argc, char **argv)
 {
 	if (argc <= 1)
 	{
-		fprintf (stderr, "input file must specified");
+		fprintf (stderr, "input file must specified\n");
 		return -1;
 	}
 	
