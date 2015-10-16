@@ -53,6 +53,11 @@ typedef struct letter_list{
  * char program_id = 프로그램의 id입니다.
  * int arrive_time = 도착 시간(Context change overhead)입니다. 0 이상 30 이하여야합니다.
  * int service_time = 서비스 시간입니다. 1이상 30 이하여야합니다.
+ * int priority = 우선순위입니다. 1이상 10 이하여야합니다.
+ * int time_quantum = 주어지는 time quantum입니다. 과제 기준은 1입니다.
+ * int remain_time = 남은 작업 시간입니다. 초기값은 서비스 시간이며, 0이 되면 모든 작업이 끝난 것입니다.
+ * int complete_time = 프로세스가 종료된 시간입니다. 이 스케줄링에서 프로세스가 실행에 실패하는 것은 가정하지 않으므로, remain_time이 0이 된 순간의 CPU 시간을 저장하면 됩니다.
+ * letter_list print_list = 프로세스의 실행 과정을 출력할 때 쓰일 연결 리스트입니다.
  */
 typedef struct parsed_string{
 
@@ -61,7 +66,7 @@ typedef struct parsed_string{
 	int service_time;
 	int priority;
 	
-	int time_quntum;
+	int time_quantum;
 
 	int remain_time;
 	int complete_time;
@@ -81,13 +86,24 @@ parsed_string* parsed_str_array; //각 라인의 파싱결과가 담긴 구조�
 
 //------------여기서 부터는 함수 선언만 있습니다.--------------//
 
-int letter_cnt(char * string, char letter);
 int check_arrive_time(char* seperated_string);
+void check_end_process();
 int check_id(char* seperated_string);
 int check_priority(char* seperated_string);
 int check_service_time(char* seperated_string);
 void file_open(char** argv);
+void find_start_process();
+int letter_cnt(char * string, char letter);
+void list_add(int line_index, char input_letter);
+char list_pop(int line_index);
 int parse_string(int line_index);
+void print_result();
+void process_run(int ALGORITHM);
 void read_data_file();
 void read_new_line_letter();
 void remove_string_space(char* string);
+void reset_remain_time();
+int select_process_PR();
+int select_process_RR();
+int select_process_SJF();
+int select_process_SRT();

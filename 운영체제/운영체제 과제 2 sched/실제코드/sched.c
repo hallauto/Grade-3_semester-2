@@ -39,27 +39,6 @@ void list_add(int line_index, char input_letter)
 	parsed_str_array[line_index].print_list.list_many++;
 }
 
-void list_add_address(letter_list *list, char input_letter)
-{
-	letter_node* new_node = calloc(1,sizeof(letter_node));
-	new_node->letter = input_letter;
-
-	//만약 리스트의 길이가 0이라면 이는 새로 추가된 노드가 노드의 tail이자 head라는 의미입니다. 새로운 노드를 head로도 지정합니다.
-	if(list->list_many == 0)
-	{
-		list->tail = new_node;
-		list->head = new_node;
-	}
-	//새로운 노드를 리스트 끝에 연결하고 새로운 tail로 지정합니다.
-	else
-	{
-		list->tail->next_node = new_node;
-		list->tail = new_node;
-	}
-
-	list->list_many++;
-}
-
 /**
  * 리스트의 head에서부터 하나씩 노드의 문자를 가져오고 노드를 제거합니다.
  * int line_index: 노드가 추가될 print_list를 가진 parsed_str_array의 배열 인덱스입니다.
@@ -411,9 +390,9 @@ int select_process_SJF()
 		current_service_time = parsed_str_array[ready_que[cur_run_proc]].service_time;
 	}
 
-	fast_index = cur_run_proc;
+	fast_index = cur_run_proc; //먼저 기본 값으로는 현재 실행 중인 프로세스가 가장 짧다고 가정합니다.
 	fast_service_time = current_service_time;
-	for (que_index = 0; que_index < ready_que_many; que_index++)
+	for (que_index = 0; que_index < ready_que_many; que_index++) //이후에 모든 프로세스를 검사하면서 더 짧은 프로세스가 있는지 찾습니다.
 	{
 		if (parsed_str_array[ready_que[que_index]].service_time < fast_service_time)
 		{
@@ -447,9 +426,9 @@ int select_process_SRT()
 		current_remain_time = parsed_str_array[ready_que[cur_run_proc]].remain_time;
 	}
 
-	fast_index = cur_run_proc;
+	fast_index = cur_run_proc; //먼저 기본 값으로는 현재 실행 중인 프로세스가 가장 짧다고 가정합니다.
 	fast_remain_time = current_remain_time;
-	for (que_index = 0; que_index < ready_que_many; que_index++)
+	for (que_index = 0; que_index < ready_que_many; que_index++) //이후에 모든 프로세스를 검사하면서 더 짧은 프로세스가 있는지 찾습니다.
 	{
 		if (parsed_str_array[ready_que[que_index]].remain_time < fast_remain_time)
 		{
@@ -483,7 +462,7 @@ int select_process_RR()
 		}
 		else
 		{
-			parsed_str_array[ready_que[0]].time_quntum = 1;
+			parsed_str_array[ready_que[0]].time_quantum = 1;
 			return 0; //먼저 온 순서대로 시작해야합니다. 이에 따라서 타임퀀텀을 주고 1을 합니다.
 		}
 	}
@@ -495,8 +474,8 @@ int select_process_RR()
 		}
 		else
 		{
-			parsed_str_array[ready_que[cur_run_proc]].time_quntum--; //먼저 타임 퀀텀을 -1 합니다.
-			if (parsed_str_array[ready_que[cur_run_proc]].time_quntum == 0) //타임 아웃이 일어나는지 검사합니다.
+			parsed_str_array[ready_que[cur_run_proc]].time_quantum--; //먼저 타임 퀀텀을 -1 합니다.
+			if (parsed_str_array[ready_que[cur_run_proc]].time_quantum == 0) //타임 아웃이 일어나는지 검사합니다.
 			{
 				//타임 아웃이 일어났습니다. 일단 기존에 실행하던 프로세스는 Ready Que의 끝자리에 들어가야하므로 이를 위한 백업을 해놓습니다.
 				int backup_line_index = ready_que[cur_run_proc];
@@ -509,7 +488,7 @@ int select_process_RR()
 				ready_que[ready_que_many - 1] = backup_line_index;
 				
 				//마지막으로 새롭게 시작할 프로세스에게 타임 퀀텀을 1 부여합니다.
-				parsed_str_array[ready_que[0]].time_quntum = 1;
+				parsed_str_array[ready_que[0]].time_quantum = 1;
 				
 				cur_run_proc = 0;
 			}
@@ -542,9 +521,9 @@ int select_process_PR()
 		current_priority = parsed_str_array[ready_que[cur_run_proc]].priority;
 	}
 
-	fast_index = cur_run_proc;
+	fast_index = cur_run_proc; //먼저 기본 값으로는 현재 실행 중인 프로세스의 우선순위가 가장 높다고 가정합니다.
 	fast_priority = current_priority;
-	for (que_index = 0; que_index < ready_que_many; que_index++)
+	for (que_index = 0; que_index < ready_que_many; que_index++) //이후에 모든 프로세스를 검사하면서 우선순위가 더 높은 프로세스가 있는지 찾습니다.
 	{
 		if (parsed_str_array[ready_que[que_index]].priority < fast_priority)
 		{
@@ -674,11 +653,11 @@ void process_run(int ALGORITHM)
 		}
 		find_start_process();
 		
-		switch (ALGORITHM)
+		switch (ALGORITHM) //이제 주어진 알고리즘에 따라서 스케줄링을 합니다.
 		{
 			case 1:
 			{
-				if (cur_run_proc == -1)
+				if (cur_run_proc == -1) //SJF는 선점이 없으므로 실행 중인 프로세스가 없을 때만 스케줄러를 호출합니다.
 					cur_run_proc = select_process_SJF();
 					break;
 			}
@@ -699,13 +678,14 @@ void process_run(int ALGORITHM)
 			}
 		}
 		
-		if (cur_run_proc == -1)
+		if (cur_run_proc == -1) //현재 실행을 할 프로세스가 없습니다. 단순히 CPU시간만 흐릅니다.
 		{
 			current_cpu_time++;
 			continue;
 		}
 		
-		list_add(ready_que[cur_run_proc], '*');
+		//이제 이번 특정 시간동안의 실행 결과를 연결 리스트에 저장합니다.
+		list_add(ready_que[cur_run_proc], '*'); //실행한 프로세스에는 *을 연결합니다.
 		
 		for (line_index = 0; line_index < line_many; line_index++)
 		{
@@ -741,6 +721,7 @@ void file_open(char **argv)
 	//data파일의 내용을 읽고 적절하게 파싱해서 실행하고 스케쥴링할 프로그램의 데이터를 구합니다.
 	read_data_file();
 	
+	//이제 각 알고리즘마다 한번씩 검사합니다.
 	printf("\n[SJF]\n");
 	process_run(SJF);
 	printf("\n[SRT]\n");
