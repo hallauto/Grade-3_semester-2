@@ -12,9 +12,7 @@
 static tsem_t *chopstick[5];
 static tsem_t *updating;
 
-static int
-update_status (int i,
-	       int eating)
+static int update_status (int i, int eating)
 {
   static int status[5] = { 0, };
   static int duplicated;
@@ -59,8 +57,7 @@ update_status (int i,
   return 0;
 }
 
-void *
-thread_func (void *arg)
+void * thread_func (void *arg)
 {
   int i = (int) (long) arg;
   int k = (i + 1) % 5;
@@ -79,9 +76,7 @@ thread_func (void *arg)
   return NULL;
 }
 
-int
-main (int    argc,
-      char **argv)
+int main (int    argc, char **argv)
 {
   int i;
 

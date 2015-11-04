@@ -13,8 +13,7 @@
 static tsem_t *start_sem[THREAD_MAX];
 static tsem_t *finish_sem[THREAD_MAX];
 
-void *
-thread_func (void *arg)
+void * thread_func (void *arg)
 {
   int idx = (int) (long) arg;
 
@@ -29,9 +28,7 @@ thread_func (void *arg)
   return NULL;
 }
 
-int
-main (int    argc,
-      char **argv)
+int main (int    argc, char **argv)
 {
   int idx;
 
