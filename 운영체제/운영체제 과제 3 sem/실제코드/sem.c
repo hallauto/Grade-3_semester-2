@@ -28,6 +28,10 @@ struct test_semaphore
 tsem_t * tsem_new (int value)
 {
 	tsem_t * new_sem = calloc(1,sizeof(tsem_t)); //동적으로 메모리를 할당합니다.
+
+	new_sem->
+	new_sem->cond_mutex_value = PTHREAD_MUTEX_INITIALIZER;
+
 	new_sem->mutex_value = PTHREAD_MUTEX_INITIALIZER; //pthread_mutex_t는 기본 정적 인자를 이용해서 만듭니다.
 	new_sem->insert_value = value;
 
@@ -53,7 +57,15 @@ void tsem_wait (tsem_t *sem)
 	status = pthread_mutex_lock(&(sem->mutex_value));
 	
 	//critical section(임계 영역)
-	if ()
+	if (status == 0)
+	{
+		fprintf(stderr,"tsem_wait에서 mutex_value의 lock에 error가 있습니다.");
+	}
+	sem->insert_value--;
+	if (sem->insert_value <=0)
+	{
+		pthread_cond_wait
+	}
 	//critical section(임계 영역) 끝
 
 }
