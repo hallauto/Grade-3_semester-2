@@ -74,9 +74,9 @@ void * thread_func (void *arg)
 			blocked_k = tsem_try_wait(chopstick[k]);
 			if (blocked_i || blocked_k) //철학자들은 두 젓가락을 동시에 얻지 못하면 전부 반납합니다. 따라서, 젓가락 2개를 적절하게 얻은 사람이 적절하게 밥을 먹게됩니다.
 			{
-				if (blocked_i) //먼저 i번째 젓가락이 lock인지 파악합니다.
+				if (!blocked_i) //먼저 i번째 젓가락이 lock이 되었는지 파악합니다. lock이라면 이를 반납합니다.
 					tsem_signal(chopstick[i]);
-				else if (blocked_k) //이번엔 k번째 젓가락이 lock인지 파악합니다.
+				else if (!blocked_k) //이번엔 k번째 젓가락이 lock인지 파악합니다. lock이라면 이를 반납합니다.
 					tsem_signal(chopstick[k]);
 				continue;
 			}
