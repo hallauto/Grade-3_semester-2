@@ -15,9 +15,9 @@
 struct test_semaphore
 {
 	pthread_cond_t cond_value; //test관련 연산들의 대기열 관리를 위한 조건변수 구조체입니다.
-	pthread_mutex_t cond_mutex_value; //test관련 연산들의 대기열 관리를 위한 mutex_t 구조체입니다.
+	//pthread_mutex_t cond_mutex_value; //test관련 연산들의 대기열 관리를 위한 mutex_t 구조체입니다.
 
-	pthread_mutex_t mutex_value;
+	pthread_mutex_t mutex_value; //해당 조건 변수의 mutex_t 구조체입니다.
  	int insert_value; //입력된 세마포어 값입니다. 이 값을 조작하는 부분이 원자화 되어야합니다. 또, 이 값이 0이하라면 lock이 걸려야합니다.
 };
 
@@ -25,11 +25,11 @@ tsem_t * tsem_new (int value)
 {
 	tsem_t * new_sem = calloc(1,sizeof(tsem_t)); //동적으로 메모리를 할당합니다.
 	
-	pthread_cond_init(&(new_sem->cond_value),NULL);
-	pthread_mutex_init(&(new_sem->cond_mutex_value),NULL);
-	pthread_mutex_init(&(new_sem->mutex_value),NULL);
+	pthread_cond_init(&(new_sem->cond_value),NULL); //조건 변수를 동적으로 할당합니다.
+	//pthread_mutex_init(&(new_sem->cond_mutex_value),NULL);
+	pthread_mutex_init(&(new_sem->mutex_value),NULL); //mutex를 동적으로 할당합니다.
 	
-	new_sem->insert_value = value;
+	new_sem->insert_value = value; //지정된 세마포어 값을 저장합니다.
 
 
   return new_sem;
@@ -37,6 +37,8 @@ tsem_t * tsem_new (int value)
 
 void tsem_free (tsem_t *sem)
 {
+	pthread_mutex_destroy(&(sem->mutex_value)); //먼저 mutex 제거를 시도합니다.
+	pthread_cond_destroy(&(sem->cond_value));
 	free(sem);
 }
 
@@ -61,11 +63,12 @@ void tsem_wait (tsem_t *sem)
 	sem->insert_value--;
 	if (sem->insert_value < 0)
 	{
+		//status = pthread_mutex_unlock(&(sem->mutex_value));
+		//status = pthread_mutex_lock(&(sem->cond_mutex_value));
 		pthread_cond_wait(&(sem->cond_value),&(sem->mutex_value));
+		//status = pthread_mutex_unlock(&(sem->cond_mutex_value));
 	}
 	//critical section(임계 영역) 끝
-	
-	status = pthread_mutex_unlock(&(sem->mutex_value));
 }
 
 int tsem_try_wait (tsem_t *sem)
@@ -124,7 +127,7 @@ void tsem_signal (tsem_t *sem)
 	{
 		pthread_cond_signal(&(sem->cond_value));
 	}
-	//critical section(임계 영역) 끝
 	
 	status = pthread_mutex_unlock(&(sem->mutex_value));
+	//critical section(임계 영역) 끝
 }

@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 static tsem_t *chopstick[5];
-static tsem_t *updating;
+static tsem_t *updating; //상황을 업데이트할 때 상호배제를 하기위한 구조체입니다.
 
 static int update_status (int i, int eating)
 {
