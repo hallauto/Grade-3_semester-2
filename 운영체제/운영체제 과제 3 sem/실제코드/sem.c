@@ -68,6 +68,8 @@ void tsem_wait (tsem_t *sem)
 		pthread_cond_wait(&(sem->cond_value),&(sem->mutex_value));
 		//status = pthread_mutex_unlock(&(sem->cond_mutex_value));
 	}
+	
+	status = pthread_mutex_unlock(&(sem->mutex_value));
 	//critical section(임계 영역) 끝
 }
 
@@ -80,7 +82,7 @@ int tsem_try_wait (tsem_t *sem)
 	3-2. 만약 0 초과라면 -1을 하고 0을 반환합니다.
 	*/
 	int status; //mutex를 통해 lock을 획득하려고 시도한 결과 값입니다.
-
+	
 	status = pthread_mutex_lock(&(sem->mutex_value));
 	
 	//critical section(임계 영역)
@@ -90,9 +92,9 @@ int tsem_try_wait (tsem_t *sem)
 	}
 	if (sem->insert_value > 0) //세마포어 값이 0보다 크면 1을 감소하고 0을 반환합니다.(wait할 필요가 없습니다.)
 	{
-		sem->insert_value--;
 		//critical section(임계 영역) 끝
 		status = pthread_mutex_unlock(&(sem->mutex_value));
+		tsem_wait(sem);
 		return 0;
 	}
 	else //세마포어 값이 0 이하면 1을 반환합니다.(이 자원이 lock되어 있음을 알려주는 것입니다.)
