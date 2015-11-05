@@ -9,10 +9,6 @@
 
 #include <pthread.h>
 
- struct test_semaphore
- {
- };
-
 typedef struct test_semaphore tsem_t;
 
 tsem_t *tsem_new      (int      value);
