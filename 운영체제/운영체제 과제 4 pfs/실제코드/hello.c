@@ -21,11 +21,17 @@ static int hello_getattr(const char *path, struct stat *stbuf)
         if (strcmp(path, "/") == 0) {
                 stbuf->st_mode = S_IFDIR | 0755;
                 stbuf->st_nlink = 2;
-        } else if (strcmp(path, hello_path) == 0) {
+        } else if (strcmp(path, "/bunning") == 0) {
                 stbuf->st_mode = S_IFREG | 0444;
                 stbuf->st_nlink = 1;
                 stbuf->st_size = strlen(hello_str);
-        } else
+        } else if (strcmp(path, "/nice")==0)
+        {
+			stbuf->st_mode = S_IFREG | 0777;
+			stbuf->st_nlink = 1;
+			stbuf->st_size = strlen("nice");
+		}
+        else
                 res = -ENOENT;
         return res;
 }
@@ -38,12 +44,13 @@ static int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                 return -ENOENT;
         filler(buf, ".", NULL, 0);
         filler(buf, "..", NULL, 0);
-        filler(buf, hello_path + 1, NULL, 0);
+        filler(buf, "bunning", NULL, 0);
+        filler(buf, "nice", NULL, 0);
         return 0;
 }
 static int hello_open(const char *path, struct fuse_file_info *fi)
 {
-        if (strcmp(path, hello_path) != 0)
+        if (strcmp(path, "/bunning") != 0)
                 return -ENOENT;
         if ((fi->flags & 3) != O_RDONLY)
                 return -EACCES;
@@ -54,7 +61,7 @@ static int hello_read(const char *path, char *buf, size_t size, off_t offset,
 {
         size_t len;
         (void) fi;
-        if(strcmp(path, hello_path) != 0)
+        if(strcmp(path, "/bunning") != 0)
                 return -ENOENT;
         len = strlen(hello_str);
         if (offset < len) {
