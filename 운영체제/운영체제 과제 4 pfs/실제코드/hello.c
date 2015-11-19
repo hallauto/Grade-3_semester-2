@@ -13,7 +13,7 @@
 #define _FILE_OFFSET_BITS 64
 
 static const char *hello_str = "Hello World!\n";
-static const char *hello_path = "/hello";
+char *hello_path;
 static int hello_getattr(const char *path, struct stat *stbuf)
 {
         int res = 0;
@@ -21,7 +21,7 @@ static int hello_getattr(const char *path, struct stat *stbuf)
         if (strcmp(path, "/") == 0) {
                 stbuf->st_mode = S_IFDIR | 0755;
                 stbuf->st_nlink = 2;
-        } else if (strcmp(path, "/bunning") == 0) {
+        } else if (strcmp(path, hello_path) == 0) {
                 stbuf->st_mode = S_IFREG | 0444;
                 stbuf->st_nlink = 1;
                 stbuf->st_size = strlen(hello_str);
@@ -44,7 +44,7 @@ static int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                 return -ENOENT;
         filler(buf, ".", NULL, 0);
         filler(buf, "..", NULL, 0);
-        filler(buf, "bunning", NULL, 0);
+        filler(buf, hello_path + 1, NULL, 0);
         filler(buf, "nice", NULL, 0);
         return 0;
 }

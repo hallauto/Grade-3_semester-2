@@ -12,7 +12,7 @@
 
 static void get_proc_pid();
 static char* get_pid_proc_cmdline(int pid);
-static void get_pid_proc_data(int pid_index);
+static void get_pid_proc_file_path(int pid_index);
 static char* make_pid_proc_file_path(int pid_index);
 static char* popen_result(FILE * fp);
 
@@ -44,11 +44,10 @@ static int pfs_getattr (const char  *path,
 		stbuf->st_mode = S_IFDIR | 0755;
 		stbuf->st_nlink = 2;
 	}
-	
-	else if (path[0] == 1){
-		stbuf->st_mode = S_IFREG | 0644;
+	else if (strcmp(path, "") != 0){
+		stbuf->st_mode = S_IFREG | 644;
 		stbuf->st_nlink = 1;
-		stbuf->st_size = 1000; //여기에 들어가야할 원래 값은 프로세스의 소유 메모리 크기입니다.
+		stbuf->st_size = 1000;
 	}
 	else
 		res = -ENOENT;
@@ -65,13 +64,8 @@ static int pfs_readdir (const char            *path,
 {
 /* not yet implemented */
 /*
-여기에서 각 pid를 이용해서 정보를 얻고 이를 filler에 저장해야합니다.
+여기에서 각 pid를 이용해서 정보를 얻고 이 중에서 파일 이름을 filler에 저장해야합니다.
 이를 위해서 각각의 함수를 만들어야합니다.
-int pid_accesstime() :접속 시간을 반환합니다.
-int pid_modifitime() :수정 시간을 반환합니다.
-int pid_createtime() :생성 시간을 반환합니다.
-char* pid_cmdline() :실행시의 커맨드 라인을 읽습니다.
-char* pid_proc_name() :프로세스의 이름을 읽습니다.
 */
 	(void) offset;
 	(void) fi;	
@@ -83,32 +77,32 @@ char* pid_proc_name() :프로세스의 이름을 읽습니다.
 	filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
     
-	get_proc_pid();
-	
-	
-	for (pid_index = 0; pid_index < 1; pid_index++)
-	{
+    
+    if (current_pid < pid_many)
+    {
 		proc_file_var.proc_file_path=NULL;
-		get_pid_proc_data(pid_index);
-		
-		if (proc_file_var.proc_file_path != NULL)
+		get_pid_proc_file_path(current_pid);
+		/*
+		if (proc_file_var.proc_file_path != NULL && proc_file_var.proc_file_path[0] == '/')
 		{
-			filler(buf,proc_file_var.proc_file_path,NULL,0);
+			filler(buf,proc_file_var.proc_file_path + 1,NULL,0);
+			printf("%d번 pid=%d %s\n",current_pid, pid_array[current_pid], proc_file_var.proc_file_path);
 			free(proc_file_var.proc_file_path);
 			proc_file_var.proc_file_path = NULL;
 		}
+		current_pid++;
+		* */
 	}
-	
 	
 	return 0;
 }
 
-static void get_pid_proc_data(int pid_index)
+static void get_pid_proc_file_path(int pid_index)
 {
 	FILE * fp; //proc 내부의 파일을 열 때 사용할 FILE 포인터입니다.
 	
-	char* proc_cmdline; //검색된 프로세스의 실행 명령어입니다.
-	char* proc_file_path; //위의 두 변수를 합쳐서 만든 파일 이름입니다.
+	char* proc_cmdline = NULL; //검색된 프로세스의 실행 명령어입니다.
+	char* proc_file_path = NULL; //위의 두 변수를 합쳐서 만든 파일 이름입니다.
 	int proc_owner; //검색된 프로세스의 사용자 = 파일 소유자입니다.
 	time_t maked_proc_time; //검색된 프로세스의 검색 시간입니다.
 	time_t access_proc_time; //검색된 프로세스의 최근 접근 시간입니다.
@@ -129,6 +123,7 @@ static void get_pid_proc_data(int pid_index)
 				free(proc_cmdline);
 				proc_cmdline = NULL;
 			}
+			proc_file_var.proc_file_path = NULL; //에러가 존재하므로 NULL로 처리합니다.
 			return;
 		}
 		else
@@ -140,23 +135,24 @@ static void get_pid_proc_data(int pid_index)
 		}
 		if (proc_file_path == NULL || strcmp(proc_file_path,"") ==0)
 		{
+			proc_file_var.proc_error = 2;
 			printf("proc_file_path 생성 오류 발생\n");
 		}
 		else
 		{
-			printf("%s\n",proc_file_path);
 			proc_file_var.proc_file_path = strdup(proc_file_path);
 			free(proc_file_path);
 			proc_file_path = NULL;
 		}
-	}	
+	}
 }
 
 static char* get_pid_proc_cmdline(int pid)
 {
 	char proc_path[1024]; //proc 내부의 파일의 경로를 저장할 배열입니다.
 	char * cmdline_string = NULL; //cmdline을 읽고 얻은 결과값입니다. 이 값에서 /를 -로 고치고, 앞부분에 있는 -들을 제거해서 반환해야합니다.
-	size_t size = 0; //getline함수를 쓰기위해 있는 값입니다.
+	size_t size = -1; //getline함수를 통해 할당된 메모리의 크기입니다. 이 값이 -1 그대로 유지되었다면 메모리가 할당되지 않은 것입니다.
+	ssize_t return_ssize = 0; //getline함수의 반환 값입니다.
 	FILE * fp;
 	sprintf(proc_path,"/proc/%d/cmdline",pid);
 	fp = fopen(proc_path,"r");
@@ -164,7 +160,15 @@ static char* get_pid_proc_cmdline(int pid)
 	{
 		return NULL;
 	}
-	getline(&cmdline_string,&size,fp);
+	return_ssize = getline(&cmdline_string,&size,fp);
+	if (size == -1)
+	{
+		cmdline_string = NULL;
+	}
+	if (return_ssize == -1)
+	{
+		cmdline_string = NULL;
+	}
 	
 	return cmdline_string;
 }
@@ -174,8 +178,8 @@ static char* get_pid_proc_cmdline(int pid)
 */
 static char* make_pid_proc_file_path(int pid_index)
 {
-	char* file_path_string; //반환될 결과 값, 파일 이름 문자열입니다.
-	char* copy_cmdline_string; //변환될 명령어 문자열의 복사본입니다.
+	char* file_path_string = NULL; //반환될 결과 값, 파일 이름 문자열입니다.
+	char* copy_cmdline_string = NULL; //변환될 명령어 문자열의 복사본입니다.
 	char pid_string[1024]; //문자열 타입의 pid를 저장할 변수입니다.
 	int string_len; //명령어 문자열의 길이입니다.
 	int string_index; //명령어 문자열을 탐색할 때 쓰일 인덱스입니다.
@@ -203,8 +207,6 @@ static char* make_pid_proc_file_path(int pid_index)
 		string_len--; //줄의 길이를 나타내는 변수를 1 줄입니다.
 	}
 	
-	printf("%s\n",copy_cmdline_string);
-	
 	file_path_string = (char*)calloc(pid_len+string_len+2,sizeof(char)); //경로 문자열의 길이는 앞의 /와 뒤의 NULL을 포함해서 계산합니다.
 	file_path_string[0] = '/'; //모든 경로의 시작은 /입니다.
 	strcat(file_path_string,pid_string);
@@ -231,7 +233,9 @@ static int pfs_unlink (const char *path)
 char* popen_result(FILE * fp)
 {
 	size_t readSize;
-	char * popen_string = (char*)calloc(10240,sizeof(char)); //결과 문자열을 저장할 변수입니다.
+	char * popen_string = NULL; //결과 문자열을 저장할 변수입니다.
+	
+	popen_string = (char*)calloc(10240,sizeof(char)); 
 
     if( !fp)
     {
@@ -255,11 +259,12 @@ char* popen_result(FILE * fp)
 void get_proc_pid()
 {
 	FILE * fp = NULL; //popen의 결과값을 얻기 위한 FILE 포인터입니다.
-	char * pid_many_string;
-	char * pid_string;
-	int pid_string_len;
-	char * seperated_pid; //proc에서 읽은 모든 pid를 파싱해서 나온 한개의 pid 문자열입니다. 이를 int형으로 바꿔서 pid_array에 저장할 것입니다.
+	char * pid_many_string = NULL;
+	char * pid_string = NULL;
+	char * seperated_pid = NULL; //proc에서 읽은 모든 pid를 파싱해서 나온 한개의 pid 문자열입니다. 이를 int형으로 바꿔서 pid_array에 저장할 것입니다.
 	char * delim = "\n"; //전체 pid 문자열을 파싱할 구분자입니다.
+	
+	int pid_index; //pid를 탐색할 때 사용할 인덱스입니다.
 	
 	//먼저 pid의 갯수를 구합니다. 
 	fp = popen("ls /proc | grep -E ^[0-9] | wc -l","r");
@@ -270,7 +275,6 @@ void get_proc_pid()
 	
 	fp = popen("ls /proc | grep -E ^[0-9]","r");
 	pid_string = popen_result(fp);
-	pid_string_len = strlen(pid_string);
 	
 	
 	pid_array = (int*)calloc(pid_many,sizeof(int)); //이제 pid갯수만큼 배열의 길이를 잡습니다.
@@ -278,17 +282,14 @@ void get_proc_pid()
 	seperated_pid = strtok(pid_string,delim);
 	if (seperated_pid != NULL && strcmp(seperated_pid, "") != 0)
 	{
-		printf("seperated_string[0] = %s\n",  seperated_pid);
 		pid_array[0] = atoi(seperated_pid);
 	}
 	
-	int pid_index; //pid를 탐색할 때 사용할 인덱스입니다.
 	for (pid_index = 1; pid_index < pid_many; pid_index++)
 	{
 		seperated_pid = strtok(NULL,delim);
 		if (seperated_pid != NULL && strcmp(seperated_pid, "") != 0) //파싱 후에 값이 빈 문자열이거나 NULL이면 오류입니다. 이 부분은 에러를 표시하고 넘어갑니다.
 		{
-			printf("seperated_string[%d] = %s\n", pid_index, seperated_pid);
 			pid_array[pid_index] = atoi(seperated_pid);
 		}
 		else
@@ -311,5 +312,22 @@ static struct fuse_operations pfs_oper =
 int main (int    argc,
 				char **argv)
 {
+	get_proc_pid();
+	current_pid = 0;
+	int pid_index;
+	for (pid_index = 0; pid_index < pid_many; pid_index++)
+	{		
+		proc_file_var.proc_file_path=NULL;
+		get_pid_proc_file_path(pid_index);
+		
+		if (proc_file_var.proc_file_path != NULL && proc_file_var.proc_file_path[0] == '/')
+		{
+			printf("%d번 pid=%d %s\n",pid_index, pid_array[pid_index], proc_file_var.proc_file_path);
+			free(proc_file_var.proc_file_path);
+			proc_file_var.proc_file_path = NULL;
+		}
+		current_pid++;
+	}
+	
 	return fuse_main (argc, argv, &pfs_oper);
 }
