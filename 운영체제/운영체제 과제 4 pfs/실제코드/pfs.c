@@ -35,7 +35,6 @@ typedef struct proc_file{
 
 static proc_file proc_file_var;
 
-static int current_pid; //현재 탐색중인 pid입니다.
 static int pid_many; //전체 pid갯수입니다.
 static int* pid_array; //pid를 저장할 배열입니다. 모든 pid들이 여기에 저장됩니다.
 
@@ -66,6 +65,7 @@ static int pfs_readdir (const char            *path,
                         off_t                  offset,
                         struct fuse_file_info *fi)
 {
+	int pid_index;
 	(void) offset;
 	(void) fi;	
 
@@ -74,6 +74,24 @@ static int pfs_readdir (const char            *path,
 
 	filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
+    
+    for(pid_index = 0; pid_index < pid_many; pid_many++)
+    {
+		proc_file_var.proc_error = 0; //에러를 판단할 때 사용하는 값을 초기화합니다.
+		
+		get_pid_proc_file_path(pid_index);
+		
+		if (proc_file_var.proc_error > 0)
+		{
+			pid_index++;
+			continue;
+		}
+		
+		if (proc_file_var.proc_file_path != NULL && proc_file_var.proc_file_path[0] == '/')
+		{
+			filler(buf, proc_file_var.proc_file_path + 1, NULL, 0);
+		}
+	}
     
 	return 0;
 }
@@ -96,7 +114,6 @@ void get_pid_proc_file_path(int pid_index)
 			proc_file_var.proc_error = 2;
 			if (proc_cmdline!=NULL)
 			{
-				free(proc_cmdline);
 				proc_cmdline = NULL;
 			}
 			return;
@@ -111,7 +128,6 @@ void get_pid_proc_file_path(int pid_index)
 			{
 				strcpy(proc_file_var.proc_cmdline,proc_cmdline);
 			}
-			free(proc_cmdline);
 			proc_cmdline = NULL;
 			proc_file_path = make_pid_proc_file_path(pid_index);
 		}
@@ -123,7 +139,6 @@ void get_pid_proc_file_path(int pid_index)
 		else
 		{
 			strcpy(proc_file_var.proc_file_path,proc_file_path);
-			free(proc_file_path);
 			proc_file_path = NULL;
 		}
 	}
@@ -194,9 +209,6 @@ char* make_pid_proc_file_path(int pid_index)
 	strcat(file_path_string,"-");
 	strcat(file_path_string,copy_cmdline_string);
 	
-	//free(copy_cmdline_string);
-	//copy_cmdline_string = NULL;
-	
 	return file_path_string;
 }
 
@@ -251,7 +263,6 @@ void get_proc_pid()
 	fp = popen("ls /proc | grep -E ^[0-9] | wc -l","r");
 	pid_many_string = popen_result(fp);
 	pid_many = atoi(pid_many_string) - 1; //기본적으로  위의 명령어의 결과 뒤에 가독성을 위한 \n이 붙습니다. 이를 감안해서 -1을 합니다.
-	free(pid_many_string);
 	pid_many_string = NULL;
 	
 	fp = popen("ls /proc | grep -E ^[0-9]","r");
@@ -278,8 +289,6 @@ void get_proc_pid()
 		}
 	}
 	
-	if (pid_string != NULL)
-		free(pid_string);
 	pid_string = NULL;
 }
 
@@ -352,7 +361,6 @@ int main (int    argc,
 	int pid_index;
 	
 	get_proc_pid();
-	current_pid = 0;
 	
 	for (pid_index = 0; pid_index < pid_many; pid_index++)
 	{
@@ -383,5 +391,5 @@ int main (int    argc,
 		
 	}
 	
-	//return fuse_main (argc, argv, &pfs_oper);
+	return fuse_main (argc, argv, &pfs_oper);
 }
