@@ -6,22 +6,26 @@
 
 #include <fuse.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 
-static void get_proc_pid();
-static char* get_pid_proc_cmdline(int pid);
-static void get_pid_proc_file_path(int pid_index);
-static char* make_pid_proc_file_path(int pid_index);
-static char* popen_result(FILE * fp);
+void get_proc_pid();
+char* get_pid_proc_cmdline(int pid);
+void get_pid_proc_file_path(int pid_index);
+char* make_pid_proc_file_path(int pid_index);
+char* popen_result(FILE * fp);
+void get_status_file(int pid_index);
 
 typedef struct proc_file{
 	
-	char* proc_cmdline; //해당 프로세스의 실행 명령어입니다.
-	char* proc_file_path; //위의 두 변수를 합쳐서 만든 파일 이름입니다.
+	char proc_cmdline[201]; //해당 프로세스의 실행 명령어입니다.
+	char proc_file_path[257]; //위의 두 변수를 합쳐서 만든 파일 이름입니다.
 	int proc_owner; //해당 프로세스의 사용자 = 파일 소유자입니다.
-	time_t maked_proc_time; //해당 프로세스의 검색 시간입니다.
+	int proc_group; //해당 프로세스의 그룹 입니다.
+	int vmsize; //해당 프로세스의 vmsize입니다.
+	time_t create_proc_time; //해당 프로세스의 생성 시간입니다.
 	time_t access_proc_time; //해당 프로세스의 최근 접근 시간입니다.
 	time_t modifi_proc_time; //해당 프로세스의 수정된 시간입니다.
 	
@@ -62,51 +66,23 @@ static int pfs_readdir (const char            *path,
                         off_t                  offset,
                         struct fuse_file_info *fi)
 {
-/* not yet implemented */
-/*
-여기에서 각 pid를 이용해서 정보를 얻고 이 중에서 파일 이름을 filler에 저장해야합니다.
-이를 위해서 각각의 함수를 만들어야합니다.
-*/
 	(void) offset;
 	(void) fi;	
 
 	if (strcmp(path, "/") != 0)
 		return -ENOENT;
-	int pid_index;
 
 	filler(buf, ".", NULL, 0);
     filler(buf, "..", NULL, 0);
     
-    
-    if (current_pid < pid_many)
-    {
-		proc_file_var.proc_file_path=NULL;
-		get_pid_proc_file_path(current_pid);
-		/*
-		if (proc_file_var.proc_file_path != NULL && proc_file_var.proc_file_path[0] == '/')
-		{
-			filler(buf,proc_file_var.proc_file_path + 1,NULL,0);
-			printf("%d번 pid=%d %s\n",current_pid, pid_array[current_pid], proc_file_var.proc_file_path);
-			free(proc_file_var.proc_file_path);
-			proc_file_var.proc_file_path = NULL;
-		}
-		current_pid++;
-		* */
-	}
-	
 	return 0;
 }
 
-static void get_pid_proc_file_path(int pid_index)
+void get_pid_proc_file_path(int pid_index)
 {
-	FILE * fp; //proc 내부의 파일을 열 때 사용할 FILE 포인터입니다.
 	
 	char* proc_cmdline = NULL; //검색된 프로세스의 실행 명령어입니다.
 	char* proc_file_path = NULL; //위의 두 변수를 합쳐서 만든 파일 이름입니다.
-	int proc_owner; //검색된 프로세스의 사용자 = 파일 소유자입니다.
-	time_t maked_proc_time; //검색된 프로세스의 검색 시간입니다.
-	time_t access_proc_time; //검색된 프로세스의 최근 접근 시간입니다.
-	time_t modifi_proc_time; //검색된 프로세스의 수정된 시간입니다.
 	
 	if (pid_array[pid_index] < 1) //만약 pid가 1 미만이라면 이는 오류입니다. 이 프로세스는 무시하고 다른 프로세스를 탐색합니다.
 	{
@@ -123,12 +99,18 @@ static void get_pid_proc_file_path(int pid_index)
 				free(proc_cmdline);
 				proc_cmdline = NULL;
 			}
-			proc_file_var.proc_file_path = NULL; //에러가 존재하므로 NULL로 처리합니다.
 			return;
 		}
 		else
 		{
-			proc_file_var.proc_cmdline = strdup(proc_cmdline);
+			if (strlen(proc_cmdline) > 200)
+			{
+				strncpy(proc_file_var.proc_cmdline,proc_cmdline,200);
+			}
+			else
+			{
+				strcpy(proc_file_var.proc_cmdline,proc_cmdline);
+			}
 			free(proc_cmdline);
 			proc_cmdline = NULL;
 			proc_file_path = make_pid_proc_file_path(pid_index);
@@ -140,14 +122,13 @@ static void get_pid_proc_file_path(int pid_index)
 		}
 		else
 		{
-			proc_file_var.proc_file_path = strdup(proc_file_path);
+			strcpy(proc_file_var.proc_file_path,proc_file_path);
 			free(proc_file_path);
 			proc_file_path = NULL;
 		}
 	}
 }
-
-static char* get_pid_proc_cmdline(int pid)
+char* get_pid_proc_cmdline(int pid)
 {
 	char proc_path[1024]; //proc 내부의 파일의 경로를 저장할 배열입니다.
 	char * cmdline_string = NULL; //cmdline을 읽고 얻은 결과값입니다. 이 값에서 /를 -로 고치고, 앞부분에 있는 -들을 제거해서 반환해야합니다.
@@ -176,16 +157,16 @@ static char* get_pid_proc_cmdline(int pid)
 /*
   pid와 프로세스 이름을 합쳐서 파일 이름을 만듭니다.
 */
-static char* make_pid_proc_file_path(int pid_index)
+char* make_pid_proc_file_path(int pid_index)
 {
 	char* file_path_string = NULL; //반환될 결과 값, 파일 이름 문자열입니다.
-	char* copy_cmdline_string = NULL; //변환될 명령어 문자열의 복사본입니다.
-	char pid_string[1024]; //문자열 타입의 pid를 저장할 변수입니다.
+	char copy_cmdline_string[201]; //변환될 명령어 문자열의 복사본입니다.
+	char pid_string[57]; //문자열 타입의 pid를 저장할 변수입니다.
 	int string_len; //명령어 문자열의 길이입니다.
 	int string_index; //명령어 문자열을 탐색할 때 쓰일 인덱스입니다.
 	int pid_len; //pid 문자열의 길이입니다.
 	
-	copy_cmdline_string = strdup(proc_file_var.proc_cmdline);
+	strcpy(copy_cmdline_string,proc_file_var.proc_cmdline);
 	string_len = strlen(copy_cmdline_string);
 	sprintf(pid_string,"%d",pid_array[pid_index]);
 	pid_len = strlen(pid_string);
@@ -213,8 +194,8 @@ static char* make_pid_proc_file_path(int pid_index)
 	strcat(file_path_string,"-");
 	strcat(file_path_string,copy_cmdline_string);
 	
-	free(copy_cmdline_string);
-	copy_cmdline_string = NULL;
+	//free(copy_cmdline_string);
+	//copy_cmdline_string = NULL;
 	
 	return file_path_string;
 }
@@ -235,7 +216,7 @@ char* popen_result(FILE * fp)
 	size_t readSize;
 	char * popen_string = NULL; //결과 문자열을 저장할 변수입니다.
 	
-	popen_string = (char*)calloc(10240,sizeof(char)); 
+	popen_string = (char*)malloc(10240*sizeof(char)); 
 
     if( !fp)
     {
@@ -276,8 +257,7 @@ void get_proc_pid()
 	fp = popen("ls /proc | grep -E ^[0-9]","r");
 	pid_string = popen_result(fp);
 	
-	
-	pid_array = (int*)calloc(pid_many,sizeof(int)); //이제 pid갯수만큼 배열의 길이를 잡습니다.
+	pid_array = (int*)malloc(pid_many*sizeof(int)); //이제 pid갯수만큼 배열의 길이를 잡습니다.
 	
 	seperated_pid = strtok(pid_string,delim);
 	if (seperated_pid != NULL && strcmp(seperated_pid, "") != 0)
@@ -298,8 +278,64 @@ void get_proc_pid()
 		}
 	}
 	
-	free(pid_string);
+	if (pid_string != NULL)
+		free(pid_string);
 	pid_string = NULL;
+}
+
+/*
+ * 해당 프로세스의 status파일을 통해 메모리 크기와 사용자 아이디, 그룹 아이디를 얻습니다.
+ */
+void get_status_file(int pid_index)
+{
+	FILE *fp;
+	int myint = 1000;
+	int BUFFERSIZE=80;
+	char proc_path[1024];
+	char *buf=malloc(85);
+	
+	sprintf(proc_path,"/proc/%d/status",pid_array[pid_index]);
+	
+	if((fp = fopen(proc_path,"r")))
+	{
+        while(fgets(buf, BUFFERSIZE, fp) != NULL)
+        {
+                if(strstr(buf, "VmSize") != NULL)
+                {
+                        if (sscanf(buf, "%*s %d", &myint) == 1)
+                        {
+								proc_file_var.vmsize = myint;
+                        }
+                }
+                else if(strstr(buf, "UID") !=NULL)
+                {
+                        if (sscanf(buf, "%*s %d", &myint) == 1)
+                        {
+								proc_file_var.proc_owner = myint;
+                        }
+				}
+                else if(strstr(buf, "GID") !=NULL)
+                {
+                        if (sscanf(buf, "%*s %d", &myint) == 1)
+                        {
+								proc_file_var.proc_group = myint;
+                        }
+				}
+		}
+	}
+}
+
+void get_time(int pid_index)
+{
+	char proc_path[1024];
+	struct stat buf;
+	
+	sprintf(proc_path,"/proc/%d",pid_array[pid_index]);
+	stat(proc_path,&buf);
+	
+	proc_file_var.access_proc_time = buf.st_atime;
+	proc_file_var.create_proc_time = buf.st_ctime;
+	proc_file_var.modifi_proc_time = buf.st_mtime;
 }
 
 static struct fuse_operations pfs_oper =
@@ -312,22 +348,40 @@ static struct fuse_operations pfs_oper =
 int main (int    argc,
 				char **argv)
 {
+	
+	int pid_index;
+	
 	get_proc_pid();
 	current_pid = 0;
-	int pid_index;
+	
 	for (pid_index = 0; pid_index < pid_many; pid_index++)
-	{		
-		proc_file_var.proc_file_path=NULL;
+	{
+		proc_file_var.proc_error = 0; //에러를 판단할 때 사용하는 값을 초기화합니다.
+		
 		get_pid_proc_file_path(pid_index);
+		
+		if (proc_file_var.proc_error > 0)
+		{
+			pid_index++;
+			continue;
+		}
 		
 		if (proc_file_var.proc_file_path != NULL && proc_file_var.proc_file_path[0] == '/')
 		{
 			printf("%d번 pid=%d %s\n",pid_index, pid_array[pid_index], proc_file_var.proc_file_path);
-			free(proc_file_var.proc_file_path);
-			proc_file_var.proc_file_path = NULL;
 		}
-		current_pid++;
+		
+		//이제 해당 프로세스의 vmsize를 파악합니다.
+		get_status_file(pid_index);
+		printf("vmsize = %d kb\n",proc_file_var.vmsize);
+		printf("사용자 아이디 = %d\n 그룹 아이디 = %d\n", proc_file_var.proc_owner, proc_file_var.proc_group);
+		
+		//마지막으로 해당 프로세스의 생성 시간, 접근 시간을 파악합니다.
+		get_time(pid_index);
+		printf("생성 시간 = %d\n 접근 시간 = %d\n\n",proc_file_var.create_proc_time, proc_file_var.access_proc_time);
+		
+		
 	}
 	
-	return fuse_main (argc, argv, &pfs_oper);
+	//return fuse_main (argc, argv, &pfs_oper);
 }
