@@ -8,6 +8,16 @@
 #include <stdio.h>
 #include <unistd.h>
 
+int person_size; //Person 객체의 크기입니다.
+
+/*
+ * 주어진 매개변수와 지정된 값을 활용해서 메모리 맵을 지정합니다.
+ */
+static void * allocate_mmap(int file_discripter, size_t person_size)
+{
+  
+}
+
 static void
 print_usage (const char *prog)
 {
@@ -26,6 +36,7 @@ main (int    argc,
   const char *attr_name;
   int         watch_mode;
 
+  person_size = sizeof(Person);
   /* Parse command line arguments. */
   file_name  = "./person.dat";
   set_value  = NULL;
@@ -63,6 +74,8 @@ main (int    argc,
   attr_name = argv[optind];
 
   /* not yet implemented */
+
+  
 
   return 0;
 }
