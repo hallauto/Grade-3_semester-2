@@ -9,27 +9,25 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-int person_size; //Person 객체의 크기입니다.
-int map_pointer; //매핑된 주소 포인터입니다.
+int* map_pointer = NULL; //매핑된 주소 포인터입니다.
 
 /*
  * 주어진 매개변수와 지정된 값을 활용해서 메모리 맵을 지정합니다.
- * 기본적으로 프로그램은 
  */
-void* allocate_mmap(int file_descriptor)
+void * allocate_mmap(int file_descriptor)
 {
 	if (file_descriptor < 0)
 	{
-		fprintf(stderr,"파일 디스크립터에 문제가 있습니다.");
-		return -1;
+		fprintf(stderr,"파일 디스크립터에 문제가 있습니다.\n");
+		return NULL;
 	}
 	
-	map_pointer = mmap(0, person_size + 1, PROT_READ | PROT_WRITE, MAP_SHARED, file_descriptor,0);
+	map_pointer = mmap(0, sizeof(Person), PROT_READ | PROT_WRITE, MAP_SHARED, file_descriptor,0);
 	
 	if (map_pointer == MAP_FAILED)
 	{
-		fprintf(stderr,"메모리 매핑중에 문제가 발생했습니다.");
-		return -1;
+		fprintf(stderr,"메모리 매핑중에 문제가 발생했습니다.\n");
+		return NULL;
 	}
 	
 	return map_pointer;
@@ -41,32 +39,31 @@ void* allocate_mmap(int file_descriptor)
   */
 void check_file_exist(const char* file_name)
 {
-  int empty_index; //새로 생성할때 이용할 인덱스입니다.
-  if (access(file_name, F_OK) == -1) //먼저 해당 파일이 존재하는지 확인합니다. 만약 존재하지 않으면 새로 생성하고 person_size만큼 0을 입력합니다.
-  {
-    file_pointer = fopen(file_name,"w+");
-    empty_array = calloc(person_size+1, sizeof(char));
-    for (empty_index = 0; empty_index < person_size + 1; empty_index++)
-    {
-      empty_array[empty_index] = 0;
-    }
-    fwrite(empty_array,1,person_size,file_pointer);
-    fclose(file_pointer);
-  }
+	FILE * file_pointer = NULL; //파일이 존재하지 않을 때, 새로 파일을 생성하고 내용을 초기화할 때 쓸 FILE 포인터입니다.
+	char* empty_array; //파일을 초기화할 떄 쓸 배열입니다.
+	
+	//먼저 해당 파일이 존재하는지 확인합니다. 만약 존재하지 않으면 새로 생성하고 sizeof(Person)만큼 0을 입력합니다.
+	if (access(file_name, F_OK) == -1)
+	{
+		file_pointer = fopen(file_name,"w+");
+		empty_array = calloc(sizeof(Person) + 1, sizeof(char));
+		fwrite(empty_array,1,sizeof(Person),file_pointer);
+		fclose(file_pointer);
+	}
 
 
-  return;
+	return;
 }
-
+ 
 /*
-  * 'attr_name 값 = 지정된 속성 이름' 의 값을 매핑된 파일에서 가져와 출력합니다.
-  * const char *attr_name: 지정된 속성 이름입니다.
-  */
+ * attr_name 값 = 지정된 속성 이름' 의 값을 매핑된 파일에서 가져와 출력합니다.
+ * const char *attr_name: 지정된 속성 이름입니다.
+ */
 static void print_get_attr(const char *attr_name)
 {
-  int attr_pointer = NULL; //속성의 포인터입니다.
+	int attr_pointer = NULL; //속성의 포인터입니다.
 
-  attr_pointer = person_get_offset_of_attr (attr_name); //먼저 attr_name을 이용해서 person구조체의 멤버를 파일에서 가져옵니다.
+	attr_pointer = person_get_offset_of_attr (attr_name); //먼저 attr_name을 이용해서 person구조체의 멤버를 파일에서 가져옵니다.
 }
 
 static void
@@ -83,14 +80,12 @@ main (int    argc,
       char **argv)
 {
 	FILE * file_pointer;
+	int * mmap_pointer; //메모리 매핑을 한 포인터입니다.
 	const char *file_name;
 	const char *set_value;
 	const char *attr_name;
 	int         watch_mode;
 	
-	char* empty_array;
-
-	person_size = sizeof(Person);
 	/* Parse command line arguments. */
 	file_name  = "./person.dat";
 	set_value  = NULL;
@@ -121,7 +116,7 @@ main (int    argc,
 		}
     }
     
-	if (!watch_mode && (optind > argc))
+	if (!watch_mode && (optind >= argc))
 	{
 		print_usage (argv[0]);
 		return -1;
@@ -129,21 +124,26 @@ main (int    argc,
 	attr_name = argv[optind];
 
 	/* not yet implemented */
-	file_pointer = fopen(file_name,"w+");
+	check_file_exist(file_name); //먼저 파일이 존재하는지 검사하고 없으면 생성하는 check_file_exist함수를 호출합니다.
+	file_pointer = fopen(file_name,"r+");
 	if (file_pointer == NULL)
 	{
 		print_usage(argv[0]);
 		return -1;
 	}
 	
-	//mmap을 이용해서 메모리 매핑을 합니다.  만약 반환값이 -1이면 에러이므로 종료합니다.
-	if (allocate_mmap(fileno(file_pointer)) == -1)
-		return -1;
+	mmap_pointer = NULL;
 	
-	if (set_value == NULL)
+	//mmap을 이용해서 메모리 매핑을 합니다.  만약 반환값이 NULL이면 에러이므로 종료합니다.
+	if (allocate_mmap(fileno(file_pointer)) == NULL)
 	{
-    print_get_attr(attr_name);
-    
+		printf("메모리 매핑중에 문제가 발생했습니다.\n");
+		return -1;
+	}
+	
+	if (set_value == NULL) //set_value가 존재하는지 검사합니다. 만약 존재하지 않으면 지정한 속성 값을 출력합니다.
+	{
+		print_get_attr(attr_name);
 	}
 	
 
