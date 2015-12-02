@@ -109,6 +109,27 @@ static void print_get_attr(const char *attr_name)
 	}
 }
 
+//주석 작성 합시다.
+static void set_value_attr(const char *attr_name, const char* set_value)
+{
+	int set_int_value; //int형 데이터는 여기서 저장합니다.
+	int attr_pointer; //속성의 포인터입니다.
+	//먼저 해당 멤버변수의 offset을 가져옵니다.
+
+	attr_pointer = person_get_offset_of_attr(attr_name);
+
+	//해당 멤버변수의 타입이 int인지 아닌지 파악합니다.
+	if (person_attr_is_integer(attr_name))
+	{
+		set_int_value = atoi(set_value);
+	}
+	else
+	{
+		
+	}
+}
+
+//주석 작성 합시다.
 int find_empty_index()
 {
 	pid_t* watchers_pointer = NULL; //watchers배열의 시작 주소입니다.
