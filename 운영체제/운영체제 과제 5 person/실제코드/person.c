@@ -74,17 +74,19 @@ void print_get_attr(const char *attr_name)
 		return;
 	}
 	
-	/*
-	 * 최종 결과물에서는 이 함수를 이용해서 출력해야합니다. 하지만 일단은 디버깅 및 개발의 용이를 위해 각 속성 이름에 따라 출력하도록 만들었습니다.
 	if (person_attr_is_integer(attr_name)) //이제 출력할 값이 int인지 문자열인지 파악합니다.
 	{
-		printf("%d\n", (int *)map_pointer + attr_offset);
+		printf("%d\n", *(map_pointer + attr_offset));
 	}
 	else
 	{
 		printf("%s\n", (char *)map_pointer + attr_offset);
 	}
-	*/
+
+	return;
+
+//디버깅용 코드입니다.
+	/*
 	if (!strcmp (attr_name, "name"))
 	{
 		printf("name: %s\n", (char *)map_pointer + attr_offset);
@@ -119,6 +121,7 @@ void print_get_attr(const char *attr_name)
 		printf("facebook: %s\n", (char *)map_pointer + attr_offset);
 		return;
 	}
+	*/
 }
 
 /*
@@ -133,8 +136,6 @@ void sending_signal(int attr_offset)
 	
 	watchers_pointer = map_pointer; //watchers_pointer는 Person 구조체의 첫번째 속성입니다. 따라서 시작주소가 곧 watchers 배열의 시작주소입니다.
 	sigval_val.sival_int = attr_offset;
-	
-	printf("%d\n",watchers_pointer);
 	
 	while (watchers_array_index < NOTIFY_MAX) //배열을 전부 돌면서 모든 pid에 시그널을 보냅니다.
 	{
@@ -201,7 +202,6 @@ int find_empty_index()
 		if (watchers_pointer[find_index] == 0)
 		{
 			watchers_pointer[find_index] = getpid();
-			printf("watchers [%d] = %d\n",find_index, watchers_pointer[find_index]);
 			return find_index;
 		}
 		
@@ -212,7 +212,6 @@ int find_empty_index()
 	find_index = 0;
 	*watchers_pointer = getpid();
 	
-	printf("watchers [%d] = %d\n",find_index, *(watchers_pointer + find_index * sizeof(pid_t)));
 	return 0;
 }
 
@@ -289,22 +288,18 @@ void sigint_sigterm_handler(int signo)
 	delete_watchers_index();
 }
 
+/*
+ * SIGUSR1 시그널의 핸들러 함수입니다. 이 함수는 siginfo에서 같이 전송된 오프셋을 읽어서 print_get_offset 함수를 이용해 출력합니다.
+ */
 void sigusr1_handler(int signo, siginfo_t *siginfo)
 {
-	printf("시그널 1 핸들러 작동\n");
 	if(siginfo->si_code == SI_QUEUE)
     {
-        printf("User RTS signal %d\n", siginfo->si_pid);
-        printf("Sig  Number %d\n",     siginfo->si_signo);
-        printf("User Data is %d\n",    siginfo->si_value.sival_int);
-        // 시그널이 큐잉되는지 확인하기 위한 코드
         
         print_get_offset(siginfo->si_value.sival_int,siginfo->si_pid);
     }
     else
     {
-        // kill등을 이용해서 표준 유닉스 시그널을 보냈을 경우
-        // 실행되는 루틴 
         printf("Get none realtime signal %d\n", signo); 
     }
 }
