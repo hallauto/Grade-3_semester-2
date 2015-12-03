@@ -55,6 +55,15 @@ void check_file_exist(const char* file_name)
 
 	return;
 }
+
+/*
+ * 성공적으로 값이 변경되었을 땐 바로 이 기쁜 소식을 watchers에 알려야합니다.
+ * 이를 위해 watchers들에게 
+ */
+int sending_signal()
+{
+	
+}
  
 /*
  * attr_name 값 = 지정된 속성 이름' 의 값을 매핑된 파일에서 가져와 출력합니다.
@@ -64,7 +73,14 @@ static void print_get_attr(const char *attr_name)
 {
 	int attr_offset = 0; //속성의 오프셋입니다.
 
-	attr_offset = person_get_offset_of_attr (attr_name); //먼저 attr_name을 이용해서 person구조체의 멤버를 파일에서 가져옵니다.
+	attr_offset = person_get_offset_of_attr (attr_name); //먼저 attr_name을 이용해서 person구조체멤버의 오프셋을 가져옵니다.
+	
+	//정상적으로 오프셋이 탐색 되었는지 확인합니다.
+	if (attr_offset < 0)
+	{
+		printf("해당 이름의 멤버변수는 없습니다. 출력을 할 수 없습니다.\n");
+		return;
+	}
 	
 	/*
 	 * 최종 결과물에서는 이 함수를 이용해서 출력해야합니다. 하지만 일단은 디버깅 및 개발의 용이를 위해 각 속성 이름에 따라 출력하도록 만들었습니다.
@@ -75,7 +91,7 @@ static void print_get_attr(const char *attr_name)
 	*/
 	if (!strcmp (attr_name, "name"))
 	{
-		printf("name: %s\n", (char *)map_pointer);
+		printf("name: %s\n", (char *)map_pointer + attr_offset);
 		return;
 	}
 	if (!strcmp (attr_name, "age"))
@@ -89,47 +105,61 @@ static void print_get_attr(const char *attr_name)
 	}
 	if (!strcmp (attr_name, "phone"))
 	{
-		printf("name: %s\n", (char *)map_pointer + attr_offset);
+		printf("phone: %s\n", (char *)map_pointer + attr_offset);
 		return;
 	}
 	if (!strcmp (attr_name, "homepage"))
 	{
-		printf("name: %s\n", (char *)map_pointer + attr_offset);
+		printf("homepage: %s\n", (char *)map_pointer + attr_offset);
 		return;
 	}
 	if (!strcmp (attr_name, "twitter"))
 	{
-		printf("name: %s\n", (char *)map_pointer + attr_offset);
+		printf("twitter: %s\n", (char *)map_pointer + attr_offset);
 		return;
 	}
 	if (!strcmp (attr_name, "facebook"))
 	{
-		printf("name: %s\n", (char *)map_pointer + attr_offset);
+		printf("facebook: %s\n", (char *)map_pointer + attr_offset);
 		return;
 	}
 }
 
-//주석 작성 합시다.
-static void set_value_attr(const char *attr_name, const char* set_value)
+/*
+ * 지정한 멤버변수의 값을 변경합니다. 이 함수는 동기화를 위한 상호 배제 기법으로 세마포어를 이용합니다.
+ * const char *attr_name: 변경할 멤버변수의 이름입니다.
+ * const char *set_value: 변경할 값입니다.
+ */
+void set_value_attr(const char *attr_name, const char* set_value)
 {
 	int set_int_value; //int형 데이터는 여기서 저장합니다.
-	int attr_pointer; //속성의 포인터입니다.
+	int attr_offset; //속성의 포인터입니다.
 	//먼저 해당 멤버변수의 offset을 가져옵니다.
 
-	attr_pointer = person_get_offset_of_attr(attr_name);
+	attr_offset = person_get_offset_of_attr(attr_name);
+	
+	//정상적으로 오프셋이 탐색 되었는지 확인합니다.
+	if (attr_offset < 0)
+	{
+		printf("해당 이름의 멤버변수는 없습니다. 값 변경을 할 수 없습니다.\n");
+		return;
+	}
 
 	//해당 멤버변수의 타입이 int인지 아닌지 파악합니다.
 	if (person_attr_is_integer(attr_name))
 	{
-		set_int_value = atoi(set_value);
+		set_int_value = atoi(set_value); //int형 값은 atoi로 변경합니다.
+		*((int *)map_pointer + attr_offset) = set_int_value;
 	}
 	else
 	{
-		
+		strcpy((char *)map_pointer + attr_offset,set_value);
 	}
 }
 
-//주석 작성 합시다.
+/*
+ * watchers배열에서 빈 인덱스를 찾아 그 자리에 해당 프로세스의 pid를 입력합니다. 만약 빈 자리가 없다면 0번에다 덮어씌웁니다. 
+ */
 int find_empty_index()
 {
 	pid_t* watchers_pointer = NULL; //watchers배열의 시작 주소입니다.
@@ -187,7 +217,7 @@ main (int    argc,
       char **argv)
 {
 	FILE * file_pointer;
-	int * mmap_pointer; //메모리 매핑을 한 포인터입니다.
+	//int * mmap_pointer; //메모리 매핑을 한 포인터입니다.
 	const char *file_name;
 	const char *set_value;
 	const char *attr_name;
@@ -239,7 +269,7 @@ main (int    argc,
 		return -1;
 	}
 	
-	mmap_pointer = NULL;
+	//mmap_pointer = NULL;
 	
 	//mmap을 이용해서 메모리 매핑을 합니다.  만약 반환값이 NULL이면 에러이므로 종료합니다.
 	if (allocate_mmap(fileno(file_pointer)) == NULL)
@@ -266,6 +296,17 @@ main (int    argc,
 			print_usage(argv[0]);
 			return -1;
 		}
+		print_get_attr(attr_name);
+	}
+	
+	else //set_value가 존재하면 지정한 속성 값을 해당 값으로 변경해야합니다. 이 작업을 시도합니다.
+	{
+		if (attr_name == NULL)
+		{
+			print_usage(argv[0]);
+			return -1;
+		}
+		set_value_attr(attr_name, set_value);
 		print_get_attr(attr_name);
 	}
 	
